@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard Operativo · MineCAD</title>
+  <link rel="stylesheet" href="dashboard.css?v=17" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar"><div><p class="eyebrow">MineCAD · Control integral</p><h1>Dashboard Operativo Mina</h1></div><a class="back-link" href="index.html">Volver</a></header>
+  <main class="container">
+    <section class="card filters-card">
+      <div class="section-title"><div><p class="eyebrow">Consulta</p><h2>Filtros</h2></div><span id="statusText" class="status-text">Selecciona un periodo</span></div>
+      <div class="filters-grid"><label>Mina<select id="filterMine"><option>Santa Maria</option><option>Unificación/Hallazgo</option></select></label><label>Desde<input id="filterFrom" type="date" /></label><label>Hasta<input id="filterTo" type="date" /></label><button id="applyFilters" class="primary" type="button">Aplicar filtros</button></div>
+    </section>
+
+    <section class="module-header"><div><p class="eyebrow">Indicadores prioritarios</p><h2>Seguridad</h2></div><span id="safetyStatus" class="status-text">Cargando…</span></section>
+    <section class="security-compact-grid">
+      <article class="card safety-calendar-card">
+        <div class="section-title"><div><p class="eyebrow">Estado del mes</p><h2 id="safetyCalendarTitle">Calendario de seguridad</h2></div></div>
+        <div class="calendar-legend"><span><i class="legend-box safe"></i> Sin accidentes</span><span><i class="legend-box warning"></i> A/B</span><span><i class="legend-box danger"></i> C</span><span><i class="legend-box fatal"></i> D</span><span><i class="legend-box transit"></i> T</span></div>
+        <div class="calendar-weekdays"><span>Dom</span><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span></div><div id="safetyCalendarGrid" class="calendar-grid"></div>
+        <div class="safety-days-inline five"><div><span>A</span><strong id="kpiSafetyA">—</strong></div><div><span>B</span><strong id="kpiSafetyB">—</strong></div><div><span>C</span><strong id="kpiSafetyC">—</strong></div><div class="type-d"><span>D · Defunción</span><strong id="kpiSafetyD">—</strong></div><div class="type-t"><span>T · Trayecto</span><strong id="kpiSafetyT">—</strong></div></div>
+      </article>
+      <article class="card safety-index-card"><div class="section-title"><div><p class="eyebrow">Indicadores</p><h2>Índices de seguridad</h2></div></div><div class="safety-index-inline"><div><span>Frecuencia</span><strong id="kpiSafetyIF">0.000</strong></div><div><span>Gravedad</span><strong id="kpiSafetyIG">0.000</strong></div><div><span>Accidentabilidad</span><strong id="kpiSafetyIA">0.000</strong></div></div></article>
+    </section>
+
+    <section class="module-header"><div><p class="eyebrow">Capital humano</p><h2>Personal</h2></div></section>
+    <section class="kpi-grid personal-five"><article class="kpi-card"><span>Plantilla requerida</span><strong id="kpiPlantillaRequerida">0</strong></article><article class="kpi-card"><span>Plantilla actual</span><strong id="kpiPlantillaActual">0</strong></article><article class="kpi-card"><span>Cumplimiento</span><strong id="kpiCumplimientoPlantilla">0%</strong></article><article class="kpi-card"><span>Ausentismo</span><strong id="kpiAusentismo">0%</strong></article><article class="kpi-card"><span>Rotación</span><strong id="kpiRotacion">0%</strong></article></section>
+
+    <section class="module-header"><div><p class="eyebrow">Producción</p><h2>Avances y volumen</h2></div></section>
+    <section class="kpi-grid"><article class="kpi-card"><span>Metros lineales</span><strong id="kpiMl">0.00 m</strong></article><article class="kpi-card"><span>Metros cúbicos</span><strong id="kpiM3">0.00 m³</strong></article><article class="kpi-card mineral"><span>Material mineral</span><strong id="kpiMineral">0.00</strong></article></section>
+    <section class="dashboard-grid production-grid">
+      <article class="card chart-card"><div class="section-title"><div><p class="eyebrow">Agrupación semanal</p><h2>Barrenación por semana</h2></div></div><div class="chart-wrap"><canvas id="weeklyChart"></canvas></div></article>
+      <article class="card"><div class="section-title"><div><p class="eyebrow">Metros lineales</p><h2>Clasificación de cuele</h2></div></div><div id="linearSummary" class="summary-list"></div></article>
+      <article class="card"><div class="section-title"><div><p class="eyebrow">Metros cúbicos</p><h2>Tumbe y desborde</h2></div></div><div id="volumeSummary" class="summary-list"></div></article>
+    </section>
+    <details class="card collapsible-card"><summary class="collapsible-summary"><div><p class="eyebrow">Detalle</p><h2>Registros de producción</h2></div><span>Mostrar / ocultar</span></summary><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Obra</th><th>Trabajo</th><th>Detalle</th><th>Clasificación</th><th>m</th><th>m³</th><th>Material</th></tr></thead><tbody id="productionBody"></tbody></table></div></details>
+
+    <section class="module-header"><div><p class="eyebrow">Flota</p><h2>Disponibilidad y productividad</h2></div></section>
+    <section class="kpi-grid"><article class="kpi-card"><span>Disponibilidad del periodo</span><strong id="kpiAvailability">0%</strong></article><article class="kpi-card"><span>Horas operadas</span><strong id="kpiHours">0 h</strong></article><article class="kpi-card"><span>Toneladas manipuladas</span><strong id="kpiMovedTons">0 t</strong></article><article class="kpi-card"><span>Productividad</span><strong id="kpiProductivity">0 t/h</strong></article></section>
+    <section class="dashboard-grid"><article class="card chart-card"><div class="section-title"><div><p class="eyebrow">Familias</p><h2>Disponibilidad por familia</h2></div></div><div class="chart-wrap"><canvas id="familyAvailabilityChart"></canvas></div></article><article class="card"><div class="section-title"><div><p class="eyebrow">Indisponibilidad</p><h2>Causas</h2></div></div><div id="failureSummary" class="summary-list"></div></article><article class="card"><div class="section-title"><div><p class="eyebrow">Movimiento</p><h2>Toneladas por equipo</h2></div></div><div id="movementSummary" class="summary-list"></div></article></section>
+    <details class="card collapsible-card"><summary class="collapsible-summary"><div><p class="eyebrow">Detalle</p><h2>Estado de equipos</h2></div><span>Mostrar / ocultar</span></summary><div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Equipo</th><th>Familia</th><th>Estado</th><th>Horas</th><th>Motivo</th><th>Falla</th></tr></thead><tbody id="equipmentBody"></tbody></table></div></details>
+
+    <section class="module-header"><div><p class="eyebrow">Perforación convencional</p><h2>Máquinas de pierna</h2></div></section>
+    <section class="kpi-grid"><article class="kpi-card"><span>Total último registro</span><strong id="kpiMpTotal">0</strong></article><article class="kpi-card"><span>Disponibles</span><strong id="kpiMpAvailable">0</strong></article><article class="kpi-card"><span>Programadas</span><strong id="kpiMpScheduled">0</strong></article><article class="kpi-card"><span>Operando</span><strong id="kpiMpOperating">0</strong></article></section>
+
+    <section class="module-header"><div><p class="eyebrow">Indicadores complementarios</p><h2>Planta y barrenación especial</h2></div></section>
+    <section class="compact-triple-grid">
+      <article class="card compact-module"><div class="section-title"><div><p class="eyebrow">Salida</p><h2>Acarreo a planta</h2></div></div><div class="compact-kpi"><span>Toneladas</span><strong id="kpiPlantTons">0.00 t</strong></div><div id="plantOriginSummary" class="summary-list"></div></article>
+      <article class="card compact-module"><div class="section-title"><div><p class="eyebrow">Barrenación especial</p><h2>StopeMate</h2></div></div><div class="compact-kpi"><span>Metros</span><strong id="kpiStopeMate">0.00 m</strong></div><div id="stopeLocationSummary" class="summary-list"></div></article>
+      <article class="card compact-module"><div class="section-title"><div><p class="eyebrow">Exploración</p><h2>Máquina Termita</h2></div></div><div class="compact-kpi"><span>Metros barrenados</span><strong id="kpiExploration">0.00 m</strong></div><div id="explorationSummary" class="summary-list"></div></article>
+    </section>
+    <div id="errorBox" class="error-box" hidden></div>
+  </main>
+  <script src="dashboard.js?v=17"></script>
+</body>
+</html>
