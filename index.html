@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102b48" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Operación Mina" />
+  <link rel="manifest" href="manifest.json?v=5" />
+  <link rel="apple-touch-icon" href="icon-192.png" />
+  <title>MineCAD | Operación Mina</title>
+  <style>
+    :root {
+      --bg: #edf3f8;
+      --surface: #ffffff;
+      --text: #18334e;
+      --muted: #62768a;
+      --line: #d8e5ef;
+      --dark: #102b48;
+      --brand: #174e80;
+      --accent: #3375c2;
+      --accent-dark: #245e92;
+      --accent-soft: #edf5fc;
+      --radius: 16px;
+      --shadow: 0 8px 24px rgba(21, 32, 40, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    .topbar {
+      background: var(--dark);
+      color: white;
+      padding: 24px clamp(18px, 5vw, 54px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+    }
+    .eyebrow {
+      margin: 0 0 4px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: 11px;
+      color: #93b4d0;
+      font-weight: 900;
+    }
+    h1 { margin: 0; font-size: clamp(28px, 5vw, 40px); }
+    .subtitle { margin: 7px 0 0; color: #c9dbe9; font-size: 14px; }
+    main { width: min(1180px, calc(100% - 24px)); margin: 28px auto 54px; }
+    .intro { text-align: center; margin-bottom: 8px; }
+    .intro h2 { margin: 0 0 5px; font-size: 22px; }
+    .intro p { margin: 0; color: var(--muted); font-size: 14px; }
+    .hub-menu {
+      position: relative;
+      width: 100%;
+      height: 760px;
+      overflow: hidden;
+    }
+    .orbit-ring {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 250px;
+      height: 250px;
+      transform: translate(-50%, -50%);
+      border-radius: 50%;
+      background: conic-gradient(from -25deg, var(--accent) 0 29%, var(--brand) 29% 67%, #173d62 67% 100%);
+      box-shadow: 0 18px 46px rgba(44, 62, 145, .2);
+      z-index: 2;
+    }
+    .brand-core {
+      position: absolute;
+      inset: 17px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      background: white;
+      box-shadow: inset 0 0 0 1px rgba(19, 35, 54, .05);
+    }
+    .brand-core img {
+      width: 105px;
+      height: 121px;
+      object-fit: contain;
+      display: block;
+    }
+    .brand-core strong {
+      margin-top: 2px;
+      font-size: 21px;
+      letter-spacing: .035em;
+      color: #18334e;
+    }
+    .spoke {
+      position: absolute;
+      left: 50%;
+      top: 50%;
+      width: 34%;
+      border-top: 1px dashed #9ca6b2;
+      transform-origin: left center;
+      transform: rotate(var(--angle));
+      z-index: 0;
+    }
+    .module-node {
+      position: absolute;
+      left: var(--x);
+      top: var(--y);
+      width: 220px;
+      min-height: 112px;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      gap: 13px;
+      padding: 16px;
+      color: inherit;
+      text-decoration: none;
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      transition: transform .18s ease, box-shadow .18s ease, border-color .18s ease;
+      z-index: 3;
+    }
+    .module-node:hover,
+    .module-node:focus-visible {
+      transform: translate(-50%, calc(-50% - 4px));
+      border-color: #7da9cf;
+      box-shadow: 0 15px 34px rgba(43, 56, 117, .15);
+      outline: none;
+    }
+    .module-icon {
+      width: 56px;
+      height: 56px;
+      flex: 0 0 56px;
+      display: grid;
+      place-items: center;
+      border-radius: 14px;
+      background: var(--accent-soft);
+    }
+    .module-icon img { width: 40px; height: 40px; display: block; }
+    .module-copy { min-width: 0; }
+    .module-copy h3 { margin: 0 0 5px; font-size: 16px; line-height: 1.2; }
+    @media (max-width: 899px) {
+      .intro { margin-bottom: 24px; }
+      .hub-menu {
+        height: auto;
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 16px;
+        overflow: visible;
+      }
+      .orbit-ring {
+        position: relative;
+        left: auto;
+        top: auto;
+        grid-column: 1 / -1;
+        width: 190px;
+        height: 190px;
+        margin: 0 auto 10px;
+        transform: none;
+      }
+      .brand-core { inset: 13px; }
+      .brand-core img { width: 75px; height: 86px; }
+      .brand-core strong { font-size: 17px; }
+      .spoke { display: none; }
+      .module-node {
+        position: relative;
+        left: auto;
+        top: auto;
+        width: auto;
+        min-height: 104px;
+        transform: none;
+      }
+      .module-node:hover,
+      .module-node:focus-visible { transform: translateY(-3px); }
+    }
+    @media (max-width: 560px) {
+      main { margin-top: 22px; }
+      .hub-menu { grid-template-columns: 1fr; }
+      .orbit-ring { grid-column: 1; }
+      .module-node { min-height: 96px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <p class="eyebrow">MineCAD</p>
+    <h1>Operación Mina</h1>
+    <p class="subtitle">Operación, visualización, planeación y seguimiento de proyectos mineros</p>
+  </header>
+  <main>
+    <section class="intro">
+      <h2>Control integral de mina</h2>
+      <p>Selecciona un módulo para continuar.</p>
+    </section>
+    <nav class="hub-menu" aria-label="Módulos de Operación Mina">
+      <span class="spoke" style="--angle: -90deg" aria-hidden="true"></span>
+      <span class="spoke" style="--angle: -38.6deg" aria-hidden="true"></span>
+      <span class="spoke" style="--angle: 12.9deg" aria-hidden="true"></span>
+      <span class="spoke" style="--angle: 64.3deg" aria-hidden="true"></span>
+      <span class="spoke" style="--angle: 115.7deg" aria-hidden="true"></span>
+      <span class="spoke" style="--angle: 167.1deg" aria-hidden="true"></span>
+      <span class="spoke" style="--angle: 218.6deg" aria-hidden="true"></span>
+      <div class="orbit-ring" aria-label="MineCAD">
+        <div class="brand-core">
+          <img src="logo-minecad.png" alt="Logotipo MineCAD" />
+          <strong>MineCAD</strong>
+        </div>
+      </div>
+      <a class="module-node" style="--x:50%; --y:9%" href="captura.html">
+        <span class="module-icon"><img src="iconos/captura-reportes.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Captura de reportes</h3></span>
+      </a>
+      <a class="module-node" style="--x:79.7%; --y:25%" href="dashboard.html">
+        <span class="module-icon"><img src="iconos/dashboard.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Dashboard</h3></span>
+      </a>
+      <a class="module-node" style="--x:87%; --y:59%" href="https://minecad-apps.github.io/Underground/">
+        <span class="module-icon"><img src="iconos/visualizador-3d.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Visualizador 3D</h3></span>
+      </a>
+      <a class="module-node" style="--x:66.5%; --y:86%" href="planos.html">
+        <span class="module-icon"><img src="iconos/planos-mina.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Planos de mina</h3></span>
+      </a>
+      <a class="module-node" style="--x:33.5%; --y:86%" href="gestion-proyectos.html">
+        <span class="module-icon"><img src="iconos/gestion-proyectos.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Gestión de Proyectos</h3></span>
+      </a>
+      <a class="module-node" style="--x:13%; --y:59%" href="planeacion-programacion.html">
+        <span class="module-icon"><img src="iconos/planeacion-programacion.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Planeación y Programación</h3></span>
+      </a>
+      <a class="module-node" style="--x:20.3%; --y:25%" href="reportes.html">
+        <span class="module-icon"><img src="iconos/reportes.svg?v=3" alt="" /></span>
+        <span class="module-copy"><h3>Reportes</h3></span>
+      </a>
+    </nav>
+  </main>
+  <script src="catalogos-loader.js?v=18"></script>
+  <script>
+    window.MinecadCatalogs.ready.catch(error => console.warn("Catálogos:", error));
+    if ("serviceWorker" in navigator) {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker
+          .register("service-worker.js?v=28")
+          .catch(error => console.error("Service Worker:", error));
+      });
+    }
+  </script>
+</body>
+</html>
