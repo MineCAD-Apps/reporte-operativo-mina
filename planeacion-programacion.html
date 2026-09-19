@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102b48" />
+  <title>Planeación y Programación | MineCAD</title>
+  <link rel="stylesheet" href="modulos.css?v=3" />
+  <style>
+    main { width: min(1280px, calc(100% - 28px)); }
+    .toolbar, .summary-grid, .day-panel, .message { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .toolbar { display: grid; grid-template-columns: auto minmax(190px, 1fr) minmax(210px, 1fr) auto auto; align-items: end; gap: 12px; padding: 16px; border-radius: var(--radius); margin-bottom: 18px; }
+    .field { display: grid; gap: 7px; }
+    .field label { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+    .field input, .field select, .week-button, .refresh-button { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+    .field input, .field select { width: 100%; padding: 9px 11px; background: #f8fafb; color: var(--text); font-size: 14px; }
+    .week-button, .refresh-button { cursor: pointer; padding: 9px 13px; font-weight: 850; }
+    .week-button { width: 42px; padding: 0; background: #f8fafb; color: var(--text); font-size: 20px; }
+    .refresh-button { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border-radius: var(--radius); margin-bottom: 18px; }
+    .metric { padding: 16px 18px; border-right: 1px solid var(--line); }
+    .metric:last-child { border-right: 0; }
+    .metric-label { display: block; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+    .metric-value { display: block; margin-top: 5px; font-size: 27px; font-weight: 900; }
+    .week-range { margin: -12px 0 18px; color: var(--muted); font-size: 13px; font-weight: 750; }
+    .schedule { display: grid; gap: 14px; }
+    .day-panel { overflow: hidden; border-radius: var(--radius); }
+    .day-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; background: #eef5fa; border-bottom: 1px solid var(--line); }
+    .day-header h3 { margin: 0; font-size: 17px; }
+    .day-total { color: var(--accent-dark); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+    .activity-list { display: grid; }
+    .activity { display: grid; grid-template-columns: minmax(190px, 1.25fr) minmax(150px, .85fr) minmax(170px, 1fr) minmax(140px, .7fr); gap: 15px; align-items: center; padding: 15px 16px; border-bottom: 1px solid var(--line); }
+    .activity:last-child { border-bottom: 0; }
+    .place-name { margin: 0 0 5px; font-size: 15px; }
+    .meta, .comments { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .work-name { display: block; font-size: 13px; font-weight: 900; }
+    .material { display: inline-block; margin-top: 5px; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .planned { display: grid; gap: 2px; justify-items: start; }
+    .planned strong { font-size: 20px; }
+    .planned span { color: var(--muted); font-size: 11px; font-weight: 750; }
+    .priority { display: inline-block; width: max-content; margin-bottom: 6px; border-radius: 999px; padding: 5px 8px; font-size: 9px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+    .priority-critical { background: #fee2e2; color: #991b1b; }
+    .priority-high { background: #ffedd5; color: #9a3412; }
+    .priority-medium { background: #fef3c7; color: #854d0e; }
+    .priority-low { background: #dcfce7; color: #166534; }
+    .priority-default { background: #edf1f3; color: #51606a; }
+    .empty-day { margin: 0; padding: 15px 16px; color: var(--muted); font-size: 13px; }
+    .message { border-radius: var(--radius); padding: 18px; color: var(--muted); font-size: 14px; }
+    .message.error { border-color: #e6b9b9; background: #fff0f0; color: #8e2525; }
+    .heading-actions { margin-left: auto; }
+    .capture-link { display: inline-block; border: 1px solid var(--accent-dark); border-radius: 10px; padding: 9px 12px; color: var(--accent-dark); font-size: 12px; font-weight: 850; text-decoration: none; }
+    [hidden] { display: none !important; }
+    @media (max-width: 900px) {
+      .toolbar { grid-template-columns: auto 1fr auto; }
+      .toolbar .field:nth-of-type(2) { grid-column: 1 / -1; grid-row: 2; }
+      .refresh-button { grid-column: 1 / -1; }
+      .activity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    @media (max-width: 650px) {
+      .module-heading { flex-wrap: wrap; }
+      .heading-actions { width: 100%; margin-left: 0; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .metric:nth-child(2) { border-right: 0; }
+      .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+    }
+    @media (max-width: 500px) {
+      .toolbar { grid-template-columns: 42px 1fr 42px; }
+      .activity { grid-template-columns: 1fr; gap: 10px; }
+      .day-header { align-items: flex-start; flex-direction: column; gap: 4px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">MineCAD · Control Integral de Mina</p><h1>Planeación y Programación</h1></div>
+    <a class="back-link" href="index.html">Menú principal</a>
+  </header>
+  <main>
+    <section class="module-heading">
+      <span class="module-icon"><img src="iconos/planeacion-programacion.svg?v=3" alt="" /></span>
+      <div><h2>Programa semanal de mina</h2><p>Consulta por día de puebles y cantidades físicas programadas.</p></div>
+      <div class="heading-actions"><a class="capture-link" href="captura.html">Capturar cumplimiento</a></div>
+    </section>
+
+    <section class="toolbar" aria-label="Filtros de programación">
+      <button id="previousWeek" class="week-button" type="button" aria-label="Semana anterior">‹</button>
+      <div class="field"><label for="weekStart">Semana que inicia</label><input id="weekStart" type="date" /></div>
+      <div class="field">
+        <label for="mineFilter">Mina</label>
+        <select id="mineFilter"><option value="">Todas las minas</option><option value="Santa Maria">Santa Maria</option><option value="Unificación/Hallazgo">Unificación/Hallazgo</option></select>
+      </div>
+      <button id="nextWeek" class="week-button" type="button" aria-label="Semana siguiente">›</button>
+      <button id="refreshButton" class="refresh-button" type="button">Actualizar</button>
+    </section>
+
+    <p id="weekRange" class="week-range"></p>
+    <section class="summary-grid" aria-label="Resumen de la semana">
+      <div class="metric"><span class="metric-label">Actividades</span><strong id="activityTotal" class="metric-value">0</strong></div>
+      <div class="metric"><span class="metric-label">Puebles programados</span><strong id="puebleTotal" class="metric-value">0</strong></div>
+      <div class="metric"><span class="metric-label">Avance programado</span><strong id="meterTotal" class="metric-value">0 m</strong></div>
+      <div class="metric"><span class="metric-label">Volumen programado</span><strong id="volumeTotal" class="metric-value">0 m³</strong></div>
+    </section>
+
+    <div id="loadingMessage" class="message">Cargando programa semanal…</div>
+    <div id="errorMessage" class="message error" hidden></div>
+    <section id="schedule" class="schedule" aria-live="polite"></section>
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
+    const DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+    const weekStart = document.getElementById("weekStart");
+    const mineFilter = document.getElementById("mineFilter");
+    const schedule = document.getElementById("schedule");
+    const loadingMessage = document.getElementById("loadingMessage");
+    const errorMessage = document.getElementById("errorMessage");
+
+    function pad(value) { return String(value).padStart(2, "0"); }
+    function dateToText(date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
+    function textToDate(value) {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+    }
+    function addDays(date, days) { return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days); }
+    function mondayFor(date) {
+      const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const day = result.getDay();
+      result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
+      return result;
+    }
+    function displayDate(date, options) { return new Intl.DateTimeFormat("es-MX", options).format(date); }
+    function escapeHtml(value) {
+      return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    function normalizeText(value) { return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+    function formatNumber(value) { return new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(Number(value) || 0); }
+    function priorityClass(priority) {
+      const value = normalizeText(priority);
+      if (value === "critica") return "priority-critical";
+      if (value === "alta") return "priority-high";
+      if (value === "media") return "priority-medium";
+      if (value === "baja") return "priority-low";
+      return "priority-default";
+    }
+    function workLabel(item) {
+      const type = String(item.tipoTrabajo || "").toUpperCase();
+      const detail = String(item.detalleTrabajo || "").trim();
+      return detail ? `${type} · ${detail}` : type;
+    }
+    function updateWeekRange() {
+      const monday = textToDate(weekStart.value);
+      if (!monday) return;
+      const sunday = addDays(monday, 6);
+      document.getElementById("weekRange").textContent = `${displayDate(monday, { day: "numeric", month: "long" })} – ${displayDate(sunday, { day: "numeric", month: "long", year: "numeric" })}`;
+    }
+    function updateSummary(items) {
+      const puebles = items.reduce((sum, item) => sum + (Number(item.pueblesProgramados) || 0), 0);
+      const meters = items.filter(item => item.unidad === "m").reduce((sum, item) => sum + (Number(item.cantidadProgramada) || 0), 0);
+      const volume = items.filter(item => item.unidad === "m3").reduce((sum, item) => sum + (Number(item.cantidadProgramada) || 0), 0);
+      document.getElementById("activityTotal").textContent = items.length;
+      document.getElementById("puebleTotal").textContent = formatNumber(puebles);
+      document.getElementById("meterTotal").textContent = `${formatNumber(meters)} m`;
+      document.getElementById("volumeTotal").textContent = `${formatNumber(volume)} m³`;
+    }
+    function activityCard(item) {
+      const project = item.idProyecto ? `Proyecto ${escapeHtml(item.idProyecto)}` : "Sin proyecto vinculado";
+      const activity = item.idActividad ? ` · Actividad ${escapeHtml(item.idActividad)}` : "";
+      const comments = item.comentarios ? escapeHtml(item.comentarios) : "Sin comentarios";
+      const priority = item.prioridad || "Sin prioridad";
+      return `<article class="activity">
+        <div><h4 class="place-name">${escapeHtml(item.lugar)}</h4><p class="meta">${escapeHtml(item.mina)} · ${escapeHtml(item.cuadrilla || "Sin cuadrilla")}</p><p class="meta">${project}${activity}</p></div>
+        <div><strong class="work-name">${escapeHtml(workLabel(item))}</strong><span class="material">${escapeHtml(item.material)}</span></div>
+        <div class="planned"><strong>${formatNumber(item.cantidadProgramada)} ${item.unidad === "m3" ? "m³" : "m"}</strong><span>${formatNumber(item.pueblesProgramados)} pueble(s)</span></div>
+        <div><span class="priority ${priorityClass(priority)}">${escapeHtml(priority)}</span><p class="comments">${comments}</p></div>
+      </article>`;
+    }
+    function renderSchedule(items) {
+      const monday = textToDate(weekStart.value);
+      schedule.innerHTML = DAYS.map((dayName, index) => {
+        const date = addDays(monday, index);
+        const dateText = dateToText(date);
+        const dayItems = items.filter(item => item.fecha === dateText);
+        const content = dayItems.length ? `<div class="activity-list">${dayItems.map(activityCard).join("")}</div>` : '<p class="empty-day">Sin actividades programadas.</p>';
+        return `<section class="day-panel"><header class="day-header"><h3>${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${displayDate(date, { day: "numeric", month: "short" })}</h3><span class="day-total">${dayItems.length} actividad(es)</span></header>${content}</section>`;
+      }).join("");
+    }
+    async function loadSchedule() {
+      const selectedDate = textToDate(weekStart.value);
+      if (!selectedDate) return;
+      const correctedMonday = mondayFor(selectedDate);
+      if (dateToText(correctedMonday) !== weekStart.value) weekStart.value = dateToText(correctedMonday);
+      updateWeekRange();
+      loadingMessage.hidden = false;
+      errorMessage.hidden = true;
+      schedule.innerHTML = "";
+      try {
+        const params = new URLSearchParams({ accion: "programacion_semanal", semana_inicio: weekStart.value });
+        if (mineFilter.value) params.set("mina", mineFilter.value);
+        const response = await fetch(`${API_URL}?${params}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        const items = Array.isArray(result.datos) ? result.datos : [];
+        updateSummary(items);
+        renderSchedule(items);
+        loadingMessage.hidden = true;
+      } catch (error) {
+        console.error(error);
+        updateSummary([]);
+        loadingMessage.hidden = true;
+        errorMessage.textContent = `No fue posible cargar la programación. ${error.message || ""}`.trim();
+        errorMessage.hidden = false;
+      }
+    }
+    function moveWeek(offset) {
+      const monday = textToDate(weekStart.value) || mondayFor(new Date());
+      weekStart.value = dateToText(addDays(monday, offset * 7));
+      loadSchedule();
+    }
+    document.getElementById("previousWeek").addEventListener("click", () => moveWeek(-1));
+    document.getElementById("nextWeek").addEventListener("click", () => moveWeek(1));
+    document.getElementById("refreshButton").addEventListener("click", loadSchedule);
+    weekStart.addEventListener("change", loadSchedule);
+    mineFilter.addEventListener("change", loadSchedule);
+    weekStart.value = dateToText(mondayFor(new Date()));
+    loadSchedule();
+  </script>
+</body>
+</html>
