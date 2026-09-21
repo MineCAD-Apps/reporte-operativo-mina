@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102b48" />
+  <title>Centro de control · MineCAD</title>
+  <link rel="stylesheet" href="dashboard.css?v=22" />
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+  <header class="topbar">
+    <div class="brand"><span class="brand-mark"><img src="logo-minecad.png" alt="" /></span><div><p class="eyebrow">MineCAD · Control integral de mina</p><h1>Centro de control</h1></div></div>
+    <a class="back-link" href="index.html">Menú principal</a>
+  </header>
+  <main class="container">
+    <section class="card filters-card" aria-label="Filtros del tablero">
+      <div class="filter-heading"><div><p class="eyebrow">Consulta</p><h2>Vista de operación</h2></div><span id="statusText" class="status-text" role="status">Consultando…</span></div>
+      <div class="filters-grid">
+        <label>Mina<select id="filterMine"><option>Santa Maria</option><option>Unificación/Hallazgo</option></select></label>
+        <label>Desde<input id="filterFrom" type="date" /></label>
+        <label>Hasta<input id="filterTo" type="date" /></label>
+        <button id="applyFilters" class="primary" type="button">Actualizar tablero</button>
+      </div>
+      <p class="filter-note">Las comparaciones de metas usan el mes de «Hasta» y su acumulado al día. El resto de indicadores usa el rango seleccionado.</p>
+    </section>
+    <div id="errorBox" class="error-box" hidden role="alert"></div>
+
+    <section class="card security-panel" aria-labelledby="securityTitle">
+      <div class="section-title"><div><p class="eyebrow">Seguridad · ambas minas</p><h2 id="securityTitle">Calendario de seguridad</h2></div><span id="safetyStatus" class="period-tag">Datos globales de ambas minas</span></div>
+      <p id="safetyCalendarTitle" class="data-note">Calendario de seguridad</p>
+      <div class="calendar-legend"><span><i class="legend-box safe"></i> Sin accidentes</span><span><i class="legend-box warning"></i> A/B</span><span><i class="legend-box danger"></i> C</span><span><i class="legend-box fatal"></i> D · Defunción</span><span><i class="legend-box transit"></i> T · Trayecto</span></div>
+      <div class="calendar-weekdays"><span>Dom</span><span>Lun</span><span>Mar</span><span>Mié</span><span>Jue</span><span>Vie</span><span>Sáb</span></div>
+      <div id="safetyCalendarGrid" class="calendar-grid"></div>
+      <details class="security-expand" id="securityDetail"><summary>Ver índices y conteos de seguridad</summary>
+        <div class="security-metrics">
+          <div><h3>Índices</h3><div class="metric-rows"><div><span>Accidentabilidad</span><strong id="kpiSafetyIA">—</strong></div><div><span>Frecuencia</span><strong id="kpiSafetyIF">—</strong></div><div><span>Gravedad</span><strong id="kpiSafetyIG">—</strong></div></div></div>
+          <div><h3>Días sin accidentes</h3><div class="metric-rows"><div><span>Tipo A</span><strong id="kpiSafetyA">—</strong></div><div><span>Tipo B</span><strong id="kpiSafetyB">—</strong></div><div><span>Tipo C</span><strong id="kpiSafetyC">—</strong></div><div><span>Tipo D · Defunción</span><strong id="kpiSafetyD">—</strong></div><div><span>Tipo T · Trayecto</span><strong id="kpiSafetyT">—</strong></div></div></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="card shipment-panel" aria-labelledby="shipmentTitle">
+      <div class="section-title"><div><p class="eyebrow">Indicador principal · mes seleccionado</p><h2 id="shipmentTitle">Toneladas enviadas a planta</h2></div><span id="shipmentMonth" class="period-tag">—</span></div>
+      <div class="shipment-layout">
+        <div class="shipment-figures">
+          <div><span>Real acumulado</span><strong id="monthPlantActual">—</strong></div>
+          <div class="shipment-side"><span>Plan proporcional al día</span><strong id="monthPlantPlanned">—</strong></div>
+          <div class="shipment-side"><span>Proyección al cierre</span><strong id="monthPlantProjected">—</strong></div>
+          <p id="shipmentFootnote" class="data-note">Cargando datos mensuales…</p>
+        </div>
+        <div class="chart-wrap shipment-chart"><canvas id="shipmentChart" aria-label="Embarque acumulado a planta"></canvas></div>
+      </div>
+      <details class="inline-detail"><summary>Ver detalle de embarques</summary><div id="plantOriginSummary" class="summary-list"></div><p class="data-note">Desglose de procedencias según el periodo de filtros.</p></details>
+    </section>
+
+    <section class="card production-goals" aria-labelledby="productionGoalsTitle">
+      <div class="section-title"><div><p class="eyebrow">Plan frente a real · al día</p><h2 id="productionGoalsTitle">Cumplimiento de producción</h2></div><span class="period-tag">Mes seleccionado</span></div>
+      <div class="comparison-grid">
+        <article class="comparison-item">
+          <h3>Metros lineales</h3>
+          <div class="chart-wrap comparison-chart"><canvas id="linearPlanChart" aria-label="Comparativo de metros lineales"></canvas></div>
+          <p id="linearPlanNote" class="data-note">—</p>
+        </article>
+        <article class="comparison-item">
+          <h3>Toneladas tumbadas</h3>
+          <div class="chart-wrap comparison-chart"><canvas id="tumblePlanChart" aria-label="Comparativo de toneladas tumbadas"></canvas></div>
+          <p id="tumblePlanNote" class="data-note">Solo tumbe en mineral; m³ reportados por densidad del catálogo.</p>
+        </article>
+      </div>
+    </section>
+
+    <section class="card inputs-panel" aria-labelledby="inputsTitle">
+      <div class="section-title"><div><p class="eyebrow">Consumo registrado · periodo seleccionado</p><h2 id="inputsTitle">Rendimiento de insumos</h2></div></div>
+      <div class="inputs-grid">
+        <div class="input-metric"><span>Brocas usadas</span><strong id="kpiBrocas">—</strong><small>piezas</small></div>
+        <div class="input-metric"><span>Barras usadas</span><strong id="kpiBarras">—</strong><small>piezas</small></div>
+        <div class="input-metric"><span>Diésel por tonelada enviada a planta</span><strong id="kpiDieselRate">—</strong><small>litros / t</small></div>
+        <div class="input-metric"><span>Explosivo por tonelada enviada a planta</span><strong id="kpiExplosiveRate">—</strong><small>kg / t</small></div>
+      </div>
+      <p id="inputsNote" class="data-note">Consultando consumos y embarques del periodo…</p>
+      <details class="inline-detail"><summary>Ver cantidades del periodo</summary>
+        <div class="metric-strip inputs-totals">
+          <div><span>Diésel</span><strong id="kpiDieselTotal">—</strong></div>
+          <div><span>Explosivo</span><strong id="kpiExplosiveTotal">—</strong></div>
+          <div><span>Enviado a planta</span><strong id="kpiShipmentForInputs">—</strong></div>
+        </div>
+      </details>
+    </section>
+
+    <section class="executive-grid" aria-label="Otros indicadores prioritarios">
+      
+      <article class="spotlight"><span>Disponibilidad de equipos</span><strong id="kpiAvailability">—</strong><small>Periodo seleccionado</small></article>
+      <article class="spotlight"><span>Productividad de equipos</span><strong id="kpiProductivity">—</strong><small>Toneladas manipuladas por hora operada</small></article>
+      <article class="spotlight"><span>Stock de mineral en patio</span><strong id="kpiStockPatio">—</strong><small id="stockDate">Sin medición de Geología</small></article>
+    </section>
+
+    <section class="module-header"><div><p class="eyebrow">Análisis por área</p><h2>Detalles del periodo</h2></div><p>Selecciona una sección para ampliar sus datos</p></section>
+    <div class="details-stack">
+      <details class="area-detail" id="productionDetail">
+        <summary><span><small>Producción</small><strong>Avances y volumen</strong></span><span class="detail-action">Ver detalle</span></summary>
+        <div class="detail-body">
+          <div class="metric-strip"><div><span>Metros lineales</span><strong id="kpiMl">—</strong></div><div><span>Metros cúbicos</span><strong id="kpiM3">—</strong></div><div><span>Material mineral</span><strong id="kpiMineral">—</strong></div></div>
+          <div class="detail-columns"><div class="card inner-card"><h3>Barrenación por semana</h3><div class="chart-wrap"><canvas id="weeklyChart"></canvas></div></div><div class="card inner-card"><h3>Clasificación de cuele</h3><div id="linearSummary" class="summary-list"></div></div><div class="card inner-card"><h3>Tumbe y desborde</h3><div id="volumeSummary" class="summary-list"></div></div></div>
+          <details class="records-detail">
+            <summary>Ver registros</summary>
+            <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Obra</th><th>Trabajo</th><th>Detalle</th><th>Clasificación</th><th>m</th><th>m³</th><th>Material</th></tr></thead><tbody id="productionBody"></tbody></table></div>
+          </details>
+        </div>
+      </details>
+      <details class="area-detail" id="fleetDetail">
+        <summary><span><small>Flota</small><strong>Equipos y movimiento</strong></span><span class="detail-action">Ver detalle</span></summary>
+        <div class="detail-body">
+          <div class="metric-strip"><div><span>Horas operadas</span><strong id="kpiHours">—</strong></div><div><span>Toneladas manipuladas</span><strong id="kpiMovedTons">—</strong></div><div><span>Productividad</span><strong id="fleetProductivityDetail">—</strong></div></div>
+          <div class="detail-columns"><div class="card inner-card"><h3>Disponibilidad por familia</h3><div class="chart-wrap"><canvas id="familyAvailabilityChart"></canvas></div></div><div class="card inner-card"><h3>Causas de indisponibilidad</h3><div id="failureSummary" class="summary-list"></div></div><div class="card inner-card"><h3>Toneladas por equipo</h3><div id="movementSummary" class="summary-list"></div></div></div>
+          <details class="records-detail">
+            <summary>Ver registros</summary>
+            <div class="table-wrap"><table><thead><tr><th>Fecha</th><th>Equipo</th><th>Familia</th><th>Estado</th><th>Horas</th><th>Motivo</th><th>Falla</th></tr></thead><tbody id="equipmentBody"></tbody></table></div>
+          </details>
+        </div>
+      </details>
+      <details class="area-detail" id="peopleDetail">
+        <summary><span><small>Personal y perforación</small><strong>Plantilla y máquinas de pierna</strong></span><span class="detail-action">Ver detalle</span></summary>
+        <div class="detail-body"><h3>Personal · datos globales de ambas minas</h3><div class="metric-strip"><div><span>Plantilla requerida</span><strong id="kpiPlantillaRequerida">—</strong></div><div><span>Plantilla actual</span><strong id="kpiPlantillaActual">—</strong></div><div><span>Cumplimiento</span><strong id="kpiCumplimientoPlantilla">—</strong></div><div><span>Ausentismo</span><strong id="kpiAusentismo">—</strong></div><div><span>Rotación</span><strong id="kpiRotacion">—</strong></div></div>
+          <h3>Máquinas de pierna · último registro del periodo</h3><div class="metric-strip"><div><span>Total</span><strong id="kpiMpTotal">—</strong></div><div><span>Disponibles</span><strong id="kpiMpAvailable">—</strong></div><div><span>Programadas</span><strong id="kpiMpScheduled">—</strong></div><div><span>Pobladas</span><strong id="kpiMpOperating">—</strong></div></div>
+        </div>
+      </details>
+      <details class="area-detail" id="drillingDetail">
+        <summary><span><small>Otras labores</small><strong>Planta, StopeMate y Termita</strong></span><span class="detail-action">Ver detalle</span></summary>
+        <div class="detail-body detail-columns"><div class="card inner-card"><h3>Enviado a planta · periodo</h3><strong id="kpiPlantTons" class="detail-number">—</strong></div><div class="card inner-card"><h3>StopeMate</h3><strong id="kpiStopeMate" class="detail-number">—</strong><div id="stopeLocationSummary" class="summary-list"></div></div><div class="card inner-card"><h3>Máquina Termita</h3><strong id="kpiExploration" class="detail-number">—</strong><div id="explorationSummary" class="summary-list"></div></div></div>
+      </details>
+    </div>
+  </main>
+  <script src="dashboard.js?v=26"></script>
+</body>
+</html>
