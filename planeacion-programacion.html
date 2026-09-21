@@ -1,0 +1,571 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102b48" />
+  <title>Planeación y Programación | MineCAD</title>
+  <link rel="stylesheet" href="modulos.css?v=4" />
+  <style>
+    main { width: min(1280px, calc(100% - 28px)); }
+    .toolbar, .summary-grid, .day-panel, .message { background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .toolbar { display: grid; grid-template-columns: auto minmax(190px, 1fr) minmax(210px, 1fr) auto auto; align-items: end; gap: 12px; padding: 16px; border-radius: var(--radius); margin-bottom: 18px; }
+    .field { display: grid; gap: 7px; }
+    .field label { color: var(--muted); font-size: 11px; font-weight: 900; letter-spacing: .07em; text-transform: uppercase; }
+    .field input, .field select, .week-button, .refresh-button { min-height: 42px; border: 1px solid var(--line); border-radius: 10px; font: inherit; }
+    .field input, .field select { width: 100%; padding: 9px 11px; background: #f8fafb; color: var(--text); font-size: 14px; }
+    .week-button, .refresh-button { cursor: pointer; padding: 9px 13px; font-weight: 850; }
+    .week-button { width: 42px; padding: 0; background: #f8fafb; color: var(--text); font-size: 20px; }
+    .refresh-button { background: var(--accent-dark); border-color: var(--accent-dark); color: #fff; }
+    .summary-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); overflow: hidden; border-radius: var(--radius); margin-bottom: 18px; }
+    .metric { padding: 16px 18px; border-right: 1px solid var(--line); }
+    .metric:last-child { border-right: 0; }
+    .metric-label { display: block; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .06em; text-transform: uppercase; }
+    .metric-value { display: block; margin-top: 5px; font-size: 27px; font-weight: 900; }
+    .week-range { margin: -12px 0 18px; color: var(--muted); font-size: 13px; font-weight: 750; }
+    .schedule { display: grid; gap: 14px; }
+    .day-panel { overflow: hidden; border-radius: var(--radius); }
+    .day-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 13px 16px; background: #eef5fa; border-bottom: 1px solid var(--line); }
+    .day-header h3 { margin: 0; font-size: 17px; }
+    .day-total { color: var(--accent-dark); font-size: 11px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+    .activity-list { display: grid; }
+    .activity { display: grid; grid-template-columns: minmax(190px, 1.2fr) minmax(145px, .8fr) minmax(230px, 1.25fr) minmax(175px, .9fr); gap: 15px; align-items: center; padding: 15px 16px; border-bottom: 1px solid var(--line); }
+    .activity:last-child { border-bottom: 0; }
+    .place-name { margin: 0 0 5px; font-size: 15px; }
+    .meta, .comments { margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .work-name { display: block; font-size: 13px; font-weight: 900; }
+    .material { display: inline-block; margin-top: 5px; color: var(--muted); font-size: 11px; font-weight: 800; }
+    .comparison { display: grid; gap: 7px; }
+    .comparison-values { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+    .comparison-values strong { font-size: 17px; }
+    .comparison-values span { color: var(--muted); font-size: 11px; font-weight: 750; }
+    .progress-track { height: 7px; overflow: hidden; border-radius: 999px; background: #e5ebf0; }
+    .progress-bar { height: 100%; border-radius: inherit; background: var(--accent); }
+    .progress-low { background: #c2413b; }
+    .progress-medium { background: #d28a20; }
+    .progress-ok { background: #2f855a; }
+    .comparison-footer { display: flex; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 10px; font-weight: 800; }
+    .tracking { display: grid; gap: 5px; }
+    .tracking-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; }
+    .tracking-row span { color: var(--muted); }
+    .tracking-missing { color: var(--muted); font-size: 11px; line-height: 1.4; }
+    .status-pill { display: inline-block; width: max-content; border-radius: 999px; padding: 4px 7px; font-size: 9px; font-weight: 900; text-transform: uppercase; letter-spacing: .04em; }
+    .status-ok { background: #dcfce7; color: #166534; }
+    .status-partial { background: #fef3c7; color: #854d0e; }
+    .status-zero { background: #fee2e2; color: #991b1b; }
+    .status-pending { background: #edf1f3; color: #51606a; }
+    .priority { display: inline-block; width: max-content; margin-bottom: 6px; border-radius: 999px; padding: 5px 8px; font-size: 9px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+    .priority-critical { background: #fee2e2; color: #991b1b; }
+    .priority-high { background: #ffedd5; color: #9a3412; }
+    .priority-medium { background: #fef3c7; color: #854d0e; }
+    .priority-low { background: #dcfce7; color: #166534; }
+    .priority-default { background: #edf1f3; color: #51606a; }
+    .empty-day { margin: 0; padding: 15px 16px; color: var(--muted); font-size: 13px; }
+    .message { border-radius: var(--radius); padding: 18px; color: var(--muted); font-size: 14px; }
+    .message.error { border-color: #e6b9b9; background: #fff0f0; color: #8e2525; }
+    .heading-actions { margin-left: auto; }
+    .capture-link { display: inline-block; border: 1px solid var(--accent-dark); border-radius: 10px; padding: 9px 12px; color: var(--accent-dark); font-size: 12px; font-weight: 850; text-decoration: none; }
+    .view-tabs { display: flex; gap: 8px; margin: -6px 0 18px; }
+    .view-tab { cursor: pointer; border: 1px solid var(--line); border-radius: 10px; padding: 10px 15px; background: var(--surface); color: var(--muted); font: inherit; font-size: 12px; font-weight: 850; }
+    .view-tab.active { border-color: var(--accent-dark); background: var(--accent-dark); color: #fff; }
+    .planning-view { display: block; }
+    .project-toolbar { grid-template-columns: minmax(250px, 1.7fr) minmax(170px, .8fr) minmax(135px, .55fr) auto; }
+    .project-summary { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+    .gantt-panel { overflow: hidden; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .gantt-panel-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 20px; padding: 16px 18px; border-bottom: 1px solid var(--line); }
+    .gantt-panel-header h3 { margin: 0 0 4px; font-size: 17px; }
+    .gantt-panel-header p { margin: 0; color: var(--muted); font-size: 12px; }
+    .gantt-legend { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 9px 13px; color: var(--muted); font-size: 10px; font-weight: 750; }
+    .gantt-legend span { white-space: nowrap; }
+    .gantt-dot { display: inline-block; width: 9px; height: 9px; margin-right: 4px; border-radius: 2px; vertical-align: -1px; }
+    .gantt-dot.cuele { background: #3375c2; }
+    .gantt-dot.tumbe { background: #23845b; }
+    .gantt-dot.other { background: #7257a8; }
+    .gantt-scroll { width: 100%; overflow: auto; background: #fff; }
+    .gantt-chart { position: relative; min-height: 160px; }
+    .gantt-header { position: sticky; top: 0; z-index: 8; display: flex; height: 46px; background: #eef5fa; border-bottom: 1px solid var(--line); }
+    .gantt-label-header { position: sticky; left: 0; z-index: 10; display: flex; align-items: center; flex: 0 0 260px; width: 260px; padding: 0 14px; background: #e6f0f7; border-right: 1px solid #cbdce8; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .05em; text-transform: uppercase; }
+    .gantt-time-header { position: relative; flex: 0 0 auto; height: 46px; }
+    .gantt-period { position: absolute; top: 0; bottom: 0; display: flex; align-items: center; justify-content: center; overflow: hidden; border-right: 1px solid #cbdce8; color: #35556f; font-size: 10px; font-weight: 850; white-space: nowrap; }
+    .gantt-body { position: relative; }
+    .gantt-row { position: absolute; left: 0; z-index: 2; display: flex; height: 54px; border-bottom: 1px solid #e4ebf1; }
+    .gantt-task-label { position: sticky; left: 0; z-index: 6; display: flex; flex: 0 0 260px; width: 260px; align-items: center; gap: 9px; padding: 7px 12px; background: #fff; border-right: 1px solid #d7e3ec; }
+    .gantt-task-code { flex: 0 0 auto; color: var(--muted); font-size: 9px; font-weight: 900; }
+    .gantt-task-name { min-width: 0; }
+    .gantt-task-name strong { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+    .gantt-task-name span { display: block; margin-top: 2px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--muted); font-size: 9px; }
+    .gantt-track { position: relative; flex: 0 0 auto; height: 54px; background-image: linear-gradient(to right, #edf2f6 1px, transparent 1px); }
+    .gantt-bar { position: absolute; top: 12px; height: 30px; overflow: hidden; border-radius: 7px; background: #3375c2; color: #fff; box-shadow: 0 3px 8px rgba(16,43,72,.14); }
+    .gantt-bar.tumbe { background: #23845b; }
+    .gantt-bar.other { background: #7257a8; }
+    .gantt-progress { position: absolute; inset: 0 auto 0 0; background: rgba(10,35,55,.28); }
+    .gantt-bar-label { position: relative; z-index: 2; display: block; overflow: hidden; padding: 7px 9px; font-size: 10px; font-weight: 850; text-overflow: ellipsis; white-space: nowrap; }
+    .gantt-links { position: absolute; z-index: 1; pointer-events: none; overflow: visible; }
+    .gantt-links path { fill: none; stroke: #7892a8; stroke-width: 1.3; }
+    .unscheduled { margin-top: 14px; padding: 15px 17px; border-radius: var(--radius); background: var(--surface); border: 1px solid var(--line); box-shadow: var(--shadow); }
+    .unscheduled h3 { margin: 0 0 10px; font-size: 15px; }
+    .unscheduled-list { display: grid; gap: 8px; }
+    .unscheduled-item { display: flex; justify-content: space-between; gap: 16px; padding: 9px 11px; border-radius: 8px; background: #f6f9fb; font-size: 12px; }
+    .unscheduled-item span { color: var(--muted); text-align: right; }
+    [hidden] { display: none !important; }
+    @media (max-width: 900px) {
+      .toolbar { grid-template-columns: auto 1fr auto; }
+      .toolbar .field:nth-of-type(2) { grid-column: 1 / -1; grid-row: 2; }
+      .refresh-button { grid-column: 1 / -1; }
+      .activity { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .project-toolbar { grid-template-columns: 1fr 1fr; }
+      .project-toolbar .refresh-button { grid-column: 1 / -1; }
+    }
+    @media (max-width: 650px) {
+      .module-heading { flex-wrap: wrap; }
+      .heading-actions { width: 100%; margin-left: 0; }
+      .summary-grid { grid-template-columns: repeat(2, 1fr); }
+      .metric:nth-child(2) { border-right: 0; }
+      .metric:nth-child(-n+2) { border-bottom: 1px solid var(--line); }
+      .project-summary { grid-template-columns: repeat(2, 1fr); }
+      .gantt-panel-header { flex-direction: column; }
+      .gantt-legend { justify-content: flex-start; }
+    }
+    @media (max-width: 500px) {
+      .toolbar { grid-template-columns: 42px 1fr 42px; }
+      .activity { grid-template-columns: 1fr; gap: 10px; }
+      .day-header { align-items: flex-start; flex-direction: column; gap: 4px; }
+      .project-toolbar { grid-template-columns: 1fr; }
+      .project-toolbar .refresh-button { grid-column: auto; }
+      .gantt-label-header, .gantt-task-label { flex-basis: 210px; width: 210px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div><p class="eyebrow">MineCAD · Control Integral de Mina</p><h1>Planeación y Programación</h1></div>
+    <a class="back-link" href="index.html">Menú principal</a>
+  </header>
+  <main>
+    <section class="module-heading">
+      <span class="module-icon"><img src="iconos/planeacion-programacion.svg?v=3" alt="" /></span>
+      <div><h2>Programa semanal de mina</h2><p>Consulta por día de puebles y cantidades físicas programadas.</p></div>
+      <div class="heading-actions"><a class="capture-link" href="captura.html">Capturar cumplimiento</a></div>
+    </section>
+
+    <nav class="view-tabs" aria-label="Vistas de planeación">
+      <button class="view-tab active" type="button" data-view="weekly">Programa semanal</button>
+      <button class="view-tab" type="button" data-view="projects">Cronograma de proyectos</button>
+    </nav>
+
+    <section id="weeklyView" class="planning-view">
+    <section class="toolbar" aria-label="Filtros de programación">
+      <button id="previousWeek" class="week-button" type="button" aria-label="Semana anterior">‹</button>
+      <div class="field"><label for="weekStart">Semana que inicia</label><input id="weekStart" type="date" /></div>
+      <div class="field">
+        <label for="mineFilter">Mina</label>
+        <select id="mineFilter"><option value="">Todas las minas</option><option value="Santa Maria">Santa Maria</option><option value="Unificación/Hallazgo">Unificación/Hallazgo</option></select>
+      </div>
+      <button id="nextWeek" class="week-button" type="button" aria-label="Semana siguiente">›</button>
+      <button id="refreshButton" class="refresh-button" type="button">Actualizar</button>
+    </section>
+
+    <p id="weekRange" class="week-range"></p>
+    <section class="summary-grid" aria-label="Resumen de la semana">
+      <div class="metric"><span class="metric-label">Actividades</span><strong id="activityTotal" class="metric-value">0</strong></div>
+      <div class="metric"><span class="metric-label">Puebles real / plan</span><strong id="puebleTotal" class="metric-value">— / 0</strong></div>
+      <div class="metric"><span class="metric-label">Avance real / plan</span><strong id="meterTotal" class="metric-value">0 / 0 m</strong></div>
+      <div class="metric"><span class="metric-label">Volumen real / plan</span><strong id="volumeTotal" class="metric-value">0 / 0 m³</strong></div>
+    </section>
+
+    <div id="loadingMessage" class="message">Cargando programa semanal…</div>
+    <div id="errorMessage" class="message error" hidden></div>
+    <section id="schedule" class="schedule" aria-live="polite"></section>
+    </section>
+
+    <section id="projectsView" class="planning-view" hidden>
+      <section class="toolbar project-toolbar" aria-label="Filtros del cronograma">
+        <div class="field">
+          <label for="projectSelect">Proyecto</label>
+          <select id="projectSelect"><option value="">Selecciona un proyecto</option></select>
+        </div>
+        <div class="field">
+          <label for="projectMineFilter">Mina</label>
+          <select id="projectMineFilter"><option value="">Todas las minas</option><option value="Santa Maria">Santa Maria</option><option value="Unificación/Hallazgo">Unificación/Hallazgo</option></select>
+        </div>
+        <div class="field">
+          <label for="ganttScale">Escala</label>
+          <select id="ganttScale"><option value="month">Mes</option><option value="week">Semana</option></select>
+        </div>
+        <button id="refreshGantt" class="refresh-button" type="button">Actualizar</button>
+      </section>
+
+      <section class="summary-grid project-summary" aria-label="Resumen del proyecto">
+        <div class="metric"><span class="metric-label">Actividades</span><strong id="projectActivityTotal" class="metric-value">0</strong></div>
+        <div class="metric"><span class="metric-label">Inicio</span><strong id="projectStart" class="metric-value">—</strong></div>
+        <div class="metric"><span class="metric-label">Fin planeado</span><strong id="projectEnd" class="metric-value">—</strong></div>
+        <div class="metric"><span class="metric-label">Avance</span><strong id="projectProgress" class="metric-value">0%</strong></div>
+      </section>
+
+      <div id="ganttLoading" class="message">Cargando proyectos…</div>
+      <div id="ganttError" class="message error" hidden></div>
+      <section id="ganttPanel" class="gantt-panel" hidden>
+        <header class="gantt-panel-header">
+          <div><h3 id="ganttTitle">Cronograma</h3><p id="ganttSubtitle"></p></div>
+          <div class="gantt-legend"><span><i class="gantt-dot cuele"></i>Cuele</span><span><i class="gantt-dot tumbe"></i>Tumbe</span><span><i class="gantt-dot other"></i>Otras actividades</span></div>
+        </header>
+        <div id="ganttScroll" class="gantt-scroll"></div>
+      </section>
+      <section id="unscheduledPanel" class="unscheduled" hidden><h3>Actividades sin programación</h3><div id="unscheduledList" class="unscheduled-list"></div></section>
+    </section>
+  </main>
+
+  <script>
+    const API_URL = "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
+    const DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
+    const weekStart = document.getElementById("weekStart");
+    const mineFilter = document.getElementById("mineFilter");
+    const schedule = document.getElementById("schedule");
+    const loadingMessage = document.getElementById("loadingMessage");
+    const errorMessage = document.getElementById("errorMessage");
+    const weeklyView = document.getElementById("weeklyView");
+    const projectsView = document.getElementById("projectsView");
+    const projectSelect = document.getElementById("projectSelect");
+    const projectMineFilter = document.getElementById("projectMineFilter");
+    const ganttScale = document.getElementById("ganttScale");
+    const ganttLoading = document.getElementById("ganttLoading");
+    const ganttError = document.getElementById("ganttError");
+    const ganttPanel = document.getElementById("ganttPanel");
+    const ganttScroll = document.getElementById("ganttScroll");
+    const unscheduledPanel = document.getElementById("unscheduledPanel");
+    const unscheduledList = document.getElementById("unscheduledList");
+    let projects = [];
+    let currentProject = null;
+    let currentProjectTasks = [];
+
+    function pad(value) { return String(value).padStart(2, "0"); }
+    function dateToText(date) { return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`; }
+    function textToDate(value) {
+      const match = String(value || "").match(/^(\d{4})-(\d{2})-(\d{2})$/);
+      return match ? new Date(Number(match[1]), Number(match[2]) - 1, Number(match[3])) : null;
+    }
+    function addDays(date, days) { return new Date(date.getFullYear(), date.getMonth(), date.getDate() + days); }
+    function mondayFor(date) {
+      const result = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const day = result.getDay();
+      result.setDate(result.getDate() - (day === 0 ? 6 : day - 1));
+      return result;
+    }
+    function displayDate(date, options) { return new Intl.DateTimeFormat("es-MX", options).format(date); }
+    function escapeHtml(value) {
+      return String(value ?? "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;").replaceAll("'", "&#039;");
+    }
+    function normalizeText(value) { return String(value || "").trim().toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, ""); }
+    function formatNumber(value) { return new Intl.NumberFormat("es-MX", { maximumFractionDigits: 2 }).format(Number(value) || 0); }
+    function priorityClass(priority) {
+      const value = normalizeText(priority);
+      if (value === "critica") return "priority-critical";
+      if (value === "alta") return "priority-high";
+      if (value === "media") return "priority-medium";
+      if (value === "baja") return "priority-low";
+      return "priority-default";
+    }
+    function workLabel(item) {
+      const type = String(item.tipoTrabajo || "").toUpperCase();
+      const detail = String(item.detalleTrabajo || "").trim();
+      return detail ? `${type} · ${detail}` : type;
+    }
+    function updateWeekRange() {
+      const monday = textToDate(weekStart.value);
+      if (!monday) return;
+      const sunday = addDays(monday, 6);
+      document.getElementById("weekRange").textContent = `${displayDate(monday, { day: "numeric", month: "long" })} – ${displayDate(sunday, { day: "numeric", month: "long", year: "numeric" })}`;
+    }
+    function updateSummary(items) {
+      const puebles = items.reduce((sum, item) => sum + (Number(item.pueblesProgramados) || 0), 0);
+      const pueblesCapturados = items.filter(item => item.tieneReportePlaneacion);
+      const pueblesReales = pueblesCapturados.reduce((sum, item) => sum + (Number(item.pueblesRealizados) || 0), 0);
+      const meters = items.filter(item => item.unidad === "m").reduce((sum, item) => sum + (Number(item.cantidadProgramada) || 0), 0);
+      const realMeters = items.filter(item => item.unidad === "m").reduce((sum, item) => sum + (Number(item.cantidadReal) || 0), 0);
+      const volume = items.filter(item => item.unidad === "m3").reduce((sum, item) => sum + (Number(item.cantidadProgramada) || 0), 0);
+      const realVolume = items.filter(item => item.unidad === "m3").reduce((sum, item) => sum + (Number(item.cantidadReal) || 0), 0);
+      document.getElementById("activityTotal").textContent = items.length;
+      document.getElementById("puebleTotal").textContent = `${pueblesCapturados.length ? formatNumber(pueblesReales) : "—"} / ${formatNumber(puebles)}`;
+      document.getElementById("meterTotal").textContent = `${formatNumber(realMeters)} / ${formatNumber(meters)} m`;
+      document.getElementById("volumeTotal").textContent = `${formatNumber(realVolume)} / ${formatNumber(volume)} m³`;
+    }
+    function physicalStatus(item) {
+      if (!item.tieneReporteMina) return { label: "Pendiente de reporte", className: "status-pending" };
+      if ((Number(item.cantidadReal) || 0) <= 0) return { label: "Sin avance", className: "status-zero" };
+      if ((Number(item.cumplimientoFisico) || 0) < 100) return { label: "Parcial", className: "status-partial" };
+      return { label: "Cumplido", className: "status-ok" };
+    }
+    function activityCard(item) {
+      const project = item.idProyecto ? `Proyecto ${escapeHtml(item.idProyecto)}` : "Sin proyecto vinculado";
+      const activity = item.idActividad ? ` · Actividad ${escapeHtml(item.idActividad)}` : "";
+      const comments = item.comentarios ? escapeHtml(item.comentarios) : "Sin comentarios";
+      const priority = item.prioridad || "Sin prioridad";
+      const unit = item.unidad === "m3" ? "m³" : "m";
+      const percent = Number(item.cumplimientoFisico) || 0;
+      const barClass = percent >= 100 ? "progress-ok" : percent >= 80 ? "progress-medium" : "progress-low";
+      const status = physicalStatus(item);
+      const deviation = Number(item.desviacionCantidad) || 0;
+      const tracking = item.tieneReportePlaneacion
+        ? `<div class="tracking-row"><span>Puebles</span><strong>${formatNumber(item.pueblesRealizados)} / ${formatNumber(item.pueblesProgramados)}</strong></div><div class="tracking-row"><span>Disparos</span><strong>${formatNumber(item.disparosRealizados)} / ${formatNumber(item.pueblesProgramados)}</strong></div>`
+        : '<span class="tracking-missing">Cumplimiento de puebles aún sin capturar.</span>';
+      return `<article class="activity">
+        <div><span class="priority ${priorityClass(priority)}">${escapeHtml(priority)}</span><h4 class="place-name">${escapeHtml(item.lugar)}</h4><p class="meta">${escapeHtml(item.mina)} · ${escapeHtml(item.cuadrilla || "Sin cuadrilla")}</p><p class="meta">${project}${activity}</p><p class="comments">${comments}</p></div>
+        <div><strong class="work-name">${escapeHtml(workLabel(item))}</strong><span class="material">${escapeHtml(item.material)}</span></div>
+        <div class="comparison"><div class="comparison-values"><strong>${formatNumber(item.cantidadReal)} / ${formatNumber(item.cantidadProgramada)} ${unit}</strong><span>${formatNumber(percent)}%</span></div><div class="progress-track"><div class="progress-bar ${barClass}" style="width:${Math.min(100, Math.max(0, percent))}%"></div></div><div class="comparison-footer"><span class="status-pill ${status.className}">${status.label}</span><span>Desv. ${deviation > 0 ? "+" : ""}${formatNumber(deviation)} ${unit}</span></div></div>
+        <div class="tracking">${tracking}</div>
+      </article>`;
+    }
+    function renderSchedule(items) {
+      const monday = textToDate(weekStart.value);
+      schedule.innerHTML = DAYS.map((dayName, index) => {
+        const date = addDays(monday, index);
+        const dateText = dateToText(date);
+        const dayItems = items.filter(item => item.fecha === dateText);
+        const content = dayItems.length ? `<div class="activity-list">${dayItems.map(activityCard).join("")}</div>` : '<p class="empty-day">Sin actividades programadas.</p>';
+        return `<section class="day-panel"><header class="day-header"><h3>${dayName.charAt(0).toUpperCase() + dayName.slice(1)} ${displayDate(date, { day: "numeric", month: "short" })}</h3><span class="day-total">${dayItems.length} actividad(es)</span></header>${content}</section>`;
+      }).join("");
+    }
+
+    function selectPlanningView(view) {
+      const showProjects = view === "projects";
+      weeklyView.hidden = showProjects;
+      projectsView.hidden = !showProjects;
+      document.querySelectorAll(".view-tab").forEach(button => {
+        button.classList.toggle("active", button.dataset.view === view);
+      });
+    }
+
+    function sameText(a, b) { return normalizeText(a) === normalizeText(b); }
+    function daysBetween(from, to) { return Math.round((to - from) / 86400000); }
+    function validTaskDate(value) { return textToDate(value); }
+    function displayShortDate(value) {
+      const date = textToDate(value);
+      return date ? displayDate(date, { day: "2-digit", month: "short", year: "numeric" }) : "—";
+    }
+    function taskClass(type) {
+      const value = normalizeText(type);
+      if (value === "cuele") return "cuele";
+      if (value === "tumbe") return "tumbe";
+      return "other";
+    }
+    function startOfTimeline(date, scale) {
+      if (scale === "week") return mondayFor(date);
+      return new Date(date.getFullYear(), date.getMonth(), 1);
+    }
+    function endOfTimeline(date, scale) {
+      if (scale === "week") return addDays(mondayFor(date), 6);
+      return new Date(date.getFullYear(), date.getMonth() + 1, 0);
+    }
+    function buildPeriods(start, end, scale, pixelsPerDay) {
+      const periods = [];
+      let cursor = new Date(start.getFullYear(), start.getMonth(), start.getDate());
+      while (cursor <= end) {
+        let next;
+        let label;
+        if (scale === "week") {
+          next = addDays(cursor, 7);
+          label = displayDate(cursor, { day: "numeric", month: "short" });
+        } else {
+          next = new Date(cursor.getFullYear(), cursor.getMonth() + 1, 1);
+          label = displayDate(cursor, { month: "short", year: "numeric" });
+        }
+        const segmentEnd = next <= end ? addDays(next, -1) : end;
+        const left = daysBetween(start, cursor) * pixelsPerDay;
+        const width = (daysBetween(cursor, segmentEnd) + 1) * pixelsPerDay;
+        periods.push(`<div class="gantt-period" style="left:${left}px;width:${width}px">${escapeHtml(label)}</div>`);
+        cursor = next;
+      }
+      return periods.join("");
+    }
+    function dependencySvg(tasks, start, pixelsPerDay, timelineWidth, bodyHeight, labelWidth) {
+      const rowHeight = 54;
+      const positions = new Map();
+      tasks.forEach((task, index) => {
+        positions.set(String(task.idActividad), {
+          index,
+          start: validTaskDate(task.fechaInicio),
+          end: validTaskDate(task.fechaFinPlan)
+        });
+      });
+      const paths = [];
+      tasks.forEach((task, index) => {
+        const predecessor = positions.get(String(task.predecesoraId || ""));
+        const taskStart = validTaskDate(task.fechaInicio);
+        if (!predecessor || !predecessor.end || !taskStart) return;
+        const x1 = (daysBetween(start, predecessor.end) + 1) * pixelsPerDay;
+        const x2 = daysBetween(start, taskStart) * pixelsPerDay;
+        const y1 = predecessor.index * rowHeight + rowHeight / 2;
+        const y2 = index * rowHeight + rowHeight / 2;
+        const elbow = x2 > x1 ? x1 + Math.max(7, Math.min(24, (x2 - x1) / 2)) : x1 + 12;
+        paths.push(`<path d="M ${x1} ${y1} H ${elbow} V ${y2} H ${Math.max(0, x2 - 4)}" marker-end="url(#ganttArrow)"></path>`);
+      });
+      return `<svg class="gantt-links" style="left:${labelWidth}px;top:0" width="${timelineWidth}" height="${bodyHeight}" viewBox="0 0 ${timelineWidth} ${bodyHeight}" aria-hidden="true"><defs><marker id="ganttArrow" markerWidth="6" markerHeight="6" refX="5" refY="3" orient="auto"><path d="M0,0 L6,3 L0,6 Z" fill="#7892a8"></path></marker></defs>${paths.join("")}</svg>`;
+    }
+    function renderGantt() {
+      if (!currentProject) return;
+      const scheduled = currentProjectTasks.filter(task => validTaskDate(task.fechaInicio) && validTaskDate(task.fechaFinPlan));
+      const unscheduled = currentProjectTasks.filter(task => !validTaskDate(task.fechaInicio) || !validTaskDate(task.fechaFinPlan));
+      document.getElementById("projectActivityTotal").textContent = currentProjectTasks.length;
+      document.getElementById("projectStart").textContent = displayShortDate(currentProject.fechaInicio);
+      document.getElementById("projectEnd").textContent = displayShortDate(currentProject.fechaFinPlan);
+      document.getElementById("projectProgress").textContent = `${formatNumber(currentProject.avancePorcentaje)}%`;
+      document.getElementById("ganttTitle").textContent = currentProject.nombreProyecto || currentProject.idProyecto;
+      document.getElementById("ganttSubtitle").textContent = `${currentProject.mina || "Mina sin definir"} · ${currentProject.idProyecto}`;
+      ganttPanel.hidden = false;
+      if (!scheduled.length) {
+        ganttScroll.innerHTML = '<div class="message">El proyecto no tiene actividades con fechas planeadas válidas.</div>';
+      } else {
+        const scale = ganttScale.value;
+        const pixelsPerDay = scale === "week" ? 7 : 2.25;
+        const labelWidth = window.innerWidth <= 500 ? 210 : 260;
+        const rowHeight = 54;
+        const earliest = new Date(Math.min(...scheduled.map(task => validTaskDate(task.fechaInicio).getTime())));
+        const latest = new Date(Math.max(...scheduled.map(task => validTaskDate(task.fechaFinPlan).getTime())));
+        const timelineStart = startOfTimeline(earliest, scale);
+        const timelineEnd = endOfTimeline(latest, scale);
+        const timelineDays = daysBetween(timelineStart, timelineEnd) + 1;
+        const timelineWidth = Math.max(680, Math.ceil(timelineDays * pixelsPerDay));
+        const bodyHeight = scheduled.length * rowHeight;
+        const periods = buildPeriods(timelineStart, timelineEnd, scale, pixelsPerDay);
+        const rows = scheduled.map((task, index) => {
+          const start = validTaskDate(task.fechaInicio);
+          const end = validTaskDate(task.fechaFinPlan);
+          const left = daysBetween(timelineStart, start) * pixelsPerDay;
+          const width = Math.max(4, (daysBetween(start, end) + 1) * pixelsPerDay);
+          const progress = Math.min(100, Math.max(0, Number(task.porcentaje) || 0));
+          const unit = task.unidad === "m3" ? "m³" : task.unidad;
+          const quantity = task.cantidadPlan === null ? "" : `${formatNumber(task.cantidadPlan)} ${unit || ""}`.trim();
+          const tooltip = `${task.nombreActividad}\n${displayShortDate(task.fechaInicio)} – ${displayShortDate(task.fechaFinPlan)}\n${task.estado || "Sin estado"}${task.restriccion ? "\nRestricción: " + task.restriccion : ""}`;
+          return `<div class="gantt-row" style="top:${index * rowHeight}px;width:${labelWidth + timelineWidth}px"><div class="gantt-task-label"><span class="gantt-task-code">${escapeHtml(task.idActividad)}</span><div class="gantt-task-name"><strong title="${escapeHtml(task.nombreActividad)}">${escapeHtml(task.nombreActividad)}</strong><span>${escapeHtml(task.tipoActividad || "Sin tipo")}${quantity ? " · " + escapeHtml(quantity) : ""}</span></div></div><div class="gantt-track" style="width:${timelineWidth}px;background-size:${Math.max(1, pixelsPerDay * 7)}px 100%"><div class="gantt-bar ${taskClass(task.tipoActividad)}" style="left:${left}px;width:${width}px" title="${escapeHtml(tooltip)}"><span class="gantt-progress" style="width:${progress}%"></span><span class="gantt-bar-label">${escapeHtml(task.nombreActividad)}</span></div></div></div>`;
+        }).join("");
+        const links = dependencySvg(scheduled, timelineStart, pixelsPerDay, timelineWidth, bodyHeight, labelWidth);
+        ganttScroll.innerHTML = `<div class="gantt-chart" style="width:${labelWidth + timelineWidth}px;--gantt-label-width:${labelWidth}px"><div class="gantt-header"><div class="gantt-label-header" style="flex-basis:${labelWidth}px;width:${labelWidth}px">Actividad</div><div class="gantt-time-header" style="width:${timelineWidth}px">${periods}</div></div><div class="gantt-body" style="height:${bodyHeight}px">${links}${rows}</div></div>`;
+      }
+      unscheduledPanel.hidden = unscheduled.length === 0;
+      unscheduledList.innerHTML = unscheduled.map(task => `<div class="unscheduled-item"><strong>${escapeHtml(task.idActividad)} · ${escapeHtml(task.nombreActividad)}</strong><span>${escapeHtml(task.restriccion || "Sin fechas planeadas")}</span></div>`).join("");
+    }
+    function visibleProjects() {
+      return projects.filter(project => !projectMineFilter.value || sameText(project.mina, projectMineFilter.value));
+    }
+    function fillProjectSelect(preferredId = "") {
+      const available = visibleProjects();
+      const previous = preferredId || projectSelect.value;
+      projectSelect.innerHTML = '<option value="">Selecciona un proyecto</option>' + available.map(project => `<option value="${escapeHtml(project.idProyecto)}">${escapeHtml(project.nombreProyecto)} · ${escapeHtml(project.idProyecto)}</option>`).join("");
+      if (available.some(project => project.idProyecto === previous)) projectSelect.value = previous;
+    }
+    async function loadProjects() {
+      ganttLoading.hidden = false;
+      ganttError.hidden = true;
+      try {
+        const response = await fetch(`${API_URL}?accion=proyectos`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        projects = Array.isArray(result.datos) ? result.datos : [];
+        const requested = new URLSearchParams(location.search).get("proyecto") || "";
+        const requestedProject = projects.find(project => project.idProyecto === requested);
+        if (requestedProject) projectMineFilter.value = requestedProject.mina || "";
+        fillProjectSelect(requested);
+        ganttLoading.hidden = true;
+        if (requestedProject) {
+          selectPlanningView("projects");
+          await loadGantt();
+        } else if (!projects.length) {
+          ganttLoading.textContent = "No hay proyectos activos disponibles.";
+          ganttLoading.hidden = false;
+        } else {
+          ganttLoading.textContent = "Selecciona un proyecto para visualizar su cronograma.";
+          ganttLoading.hidden = false;
+        }
+      } catch (error) {
+        console.error(error);
+        ganttLoading.hidden = true;
+        ganttError.textContent = `No fue posible cargar los proyectos. ${error.message || ""}`.trim();
+        ganttError.hidden = false;
+      }
+    }
+    async function loadGantt() {
+      const idProject = projectSelect.value;
+      if (!idProject) {
+        currentProject = null;
+        currentProjectTasks = [];
+        ganttPanel.hidden = true;
+        unscheduledPanel.hidden = true;
+        ganttLoading.textContent = "Selecciona un proyecto para visualizar su cronograma.";
+        ganttLoading.hidden = false;
+        return;
+      }
+      const currentUrl = new URL(location.href);
+      currentUrl.searchParams.set("proyecto", idProject);
+      history.replaceState({}, "", currentUrl);
+      ganttLoading.textContent = "Cargando cronograma…";
+      ganttLoading.hidden = false;
+      ganttError.hidden = true;
+      ganttPanel.hidden = true;
+      unscheduledPanel.hidden = true;
+      try {
+        const params = new URLSearchParams({ accion: "actividades_proyecto", id_proyecto: idProject });
+        const response = await fetch(`${API_URL}?${params}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        currentProject = result.proyecto || projects.find(project => project.idProyecto === idProject) || null;
+        currentProjectTasks = Array.isArray(result.datos) ? result.datos : [];
+        ganttLoading.hidden = true;
+        renderGantt();
+      } catch (error) {
+        console.error(error);
+        ganttLoading.hidden = true;
+        ganttError.textContent = `No fue posible cargar el cronograma. ${error.message || ""}`.trim();
+        ganttError.hidden = false;
+      }
+    }
+    async function loadSchedule() {
+      const selectedDate = textToDate(weekStart.value);
+      if (!selectedDate) return;
+      const correctedMonday = mondayFor(selectedDate);
+      if (dateToText(correctedMonday) !== weekStart.value) weekStart.value = dateToText(correctedMonday);
+      updateWeekRange();
+      loadingMessage.hidden = false;
+      errorMessage.hidden = true;
+      schedule.innerHTML = "";
+      try {
+        const params = new URLSearchParams({ accion: "programacion_semanal", semana_inicio: weekStart.value });
+        if (mineFilter.value) params.set("mina", mineFilter.value);
+        const response = await fetch(`${API_URL}?${params}`, { cache: "no-store" });
+        if (!response.ok) throw new Error(`HTTP ${response.status}`);
+        const result = await response.json();
+        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        const items = Array.isArray(result.datos) ? result.datos : [];
+        updateSummary(items);
+        renderSchedule(items);
+        loadingMessage.hidden = true;
+      } catch (error) {
+        console.error(error);
+        updateSummary([]);
+        loadingMessage.hidden = true;
+        errorMessage.textContent = `No fue posible cargar la programación. ${error.message || ""}`.trim();
+        errorMessage.hidden = false;
+      }
+    }
+    function moveWeek(offset) {
+      const monday = textToDate(weekStart.value) || mondayFor(new Date());
+      weekStart.value = dateToText(addDays(monday, offset * 7));
+      loadSchedule();
+    }
+    document.getElementById("previousWeek").addEventListener("click", () => moveWeek(-1));
+    document.getElementById("nextWeek").addEventListener("click", () => moveWeek(1));
+    document.getElementById("refreshButton").addEventListener("click", loadSchedule);
+    document.getElementById("refreshGantt").addEventListener("click", loadGantt);
+    document.querySelectorAll(".view-tab").forEach(button => button.addEventListener("click", () => selectPlanningView(button.dataset.view)));
+    weekStart.addEventListener("change", loadSchedule);
+    mineFilter.addEventListener("change", loadSchedule);
+    projectSelect.addEventListener("change", loadGantt);
+    projectMineFilter.addEventListener("change", () => { fillProjectSelect(); loadGantt(); });
+    ganttScale.addEventListener("change", renderGantt);
+    weekStart.value = dateToText(mondayFor(new Date()));
+    loadSchedule();
+    loadProjects();
+  </script>
+</body>
+</html>
