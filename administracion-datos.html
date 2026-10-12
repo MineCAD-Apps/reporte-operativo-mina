@@ -1,0 +1,675 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="theme-color" content="#102b48" />
+  <title>MineCAD | Administración de datos</title>
+  <style>
+    :root {
+      --bg: #edf3f8;
+      --surface: #ffffff;
+      --surface-soft: #f6f9fc;
+      --text: #18334e;
+      --muted: #62768a;
+      --line: #d8e5ef;
+      --dark: #102b48;
+      --brand: #174e80;
+      --accent: #3375c2;
+      --accent-dark: #245e92;
+      --accent-soft: #edf5fc;
+      --ok: #147a4b;
+      --ok-soft: #eaf7f0;
+      --warn: #9a6700;
+      --warn-soft: #fff7df;
+      --danger: #a13a32;
+      --danger-soft: #fff0ee;
+      --radius: 16px;
+      --shadow: 0 8px 24px rgba(21, 32, 40, .08);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: var(--bg);
+      color: var(--text);
+    }
+    button, input, select { font: inherit; }
+    .topbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      background: var(--dark);
+      color: white;
+      padding: 20px clamp(18px, 5vw, 54px);
+      box-shadow: 0 4px 14px rgba(0, 0, 0, .15);
+    }
+    .eyebrow {
+      margin: 0 0 4px;
+      text-transform: uppercase;
+      letter-spacing: .14em;
+      font-size: 11px;
+      color: #93b4d0;
+      font-weight: 900;
+    }
+    .topbar h1 { margin: 0; font-size: clamp(24px, 4vw, 34px); }
+    .back-link {
+      color: white;
+      text-decoration: none;
+      border: 1px solid rgba(255,255,255,.28);
+      border-radius: 10px;
+      padding: 9px 12px;
+      font-size: 13px;
+      font-weight: 800;
+      white-space: nowrap;
+    }
+    main { width: min(1220px, calc(100% - 24px)); margin: 24px auto 54px; }
+    .hero {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 18px;
+      margin-bottom: 18px;
+    }
+    .hero h2 { margin: 0 0 5px; font-size: 24px; }
+    .hero p { margin: 0; color: var(--muted); line-height: 1.5; }
+    .actions { display: flex; flex-wrap: wrap; gap: 9px; justify-content: flex-end; }
+    .button {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 38px;
+      padding: 9px 13px;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--text);
+      text-decoration: none;
+      font-weight: 800;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .button.primary { background: var(--brand); border-color: var(--brand); color: white; }
+    .button:disabled { opacity: .55; cursor: wait; }
+    .status-line {
+      margin: 0 0 18px;
+      padding: 10px 12px;
+      border: 1px solid var(--line);
+      border-radius: 11px;
+      background: rgba(255,255,255,.72);
+      color: var(--muted);
+      font-size: 13px;
+    }
+    .status-line.error { color: var(--danger); background: var(--danger-soft); border-color: #f0c3bd; }
+    .summary-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .metric {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .metric .label { color: var(--muted); font-size: 12px; font-weight: 800; text-transform: uppercase; letter-spacing: .06em; }
+    .metric .value { display: block; margin-top: 7px; font-size: 28px; line-height: 1; color: var(--dark); }
+    .metric .detail { margin-top: 8px; color: var(--muted); font-size: 12px; }
+    .mine-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 14px;
+      margin-bottom: 18px;
+    }
+    .mine-card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      padding: 18px;
+    }
+    .mine-card .row { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+    .mine-card h3 { margin: 0; font-size: 17px; }
+    .mine-date { margin-top: 10px; font-size: 24px; font-weight: 900; color: var(--brand); }
+    .mine-caption { margin-top: 5px; color: var(--muted); font-size: 12px; }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 25px;
+      padding: 4px 8px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 900;
+      border: 1px solid transparent;
+      white-space: nowrap;
+    }
+    .badge.ok { color: var(--ok); background: var(--ok-soft); border-color: #bfe5d0; }
+    .badge.warn { color: var(--warn); background: var(--warn-soft); border-color: #efd99b; }
+    .badge.danger { color: var(--danger); background: var(--danger-soft); border-color: #efc2bd; }
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      margin-bottom: 18px;
+      overflow: hidden;
+    }
+    .card-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      padding: 17px 18px;
+      border-bottom: 1px solid var(--line);
+    }
+    .card-head h3 { margin: 0; font-size: 18px; }
+    .card-head p { margin: 4px 0 0; color: var(--muted); font-size: 12px; }
+    .filters {
+      display: grid;
+      grid-template-columns: 1.1fr 1fr .8fr 1.4fr;
+      gap: 10px;
+      padding: 12px 18px;
+      border-bottom: 1px solid var(--line);
+      background: var(--surface-soft);
+    }
+    .filters input, .filters select {
+      width: 100%;
+      min-height: 38px;
+      border: 1px solid #cbd9e4;
+      border-radius: 9px;
+      background: white;
+      color: var(--text);
+      padding: 7px 9px;
+    }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 980px; }
+    th, td { padding: 11px 12px; border-bottom: 1px solid #e7eef4; text-align: left; vertical-align: top; font-size: 12px; }
+    th { position: sticky; top: 0; background: #f7fafc; color: #52697d; text-transform: uppercase; letter-spacing: .045em; font-size: 10px; z-index: 1; }
+    tr:last-child td { border-bottom: 0; }
+    td.note { min-width: 260px; color: #4f6477; line-height: 1.45; }
+    .empty { padding: 26px 18px; text-align: center; color: var(--muted); }
+    .tabs {
+      display: flex;
+      gap: 8px;
+      padding: 0 18px 12px;
+      background: var(--surface);
+    }
+    .tab-button {
+      border: 1px solid var(--line);
+      background: white;
+      color: var(--text);
+      border-radius: 999px;
+      padding: 7px 11px;
+      font-weight: 800;
+      font-size: 12px;
+      cursor: pointer;
+    }
+    .tab-button.active { background: var(--brand); color: white; border-color: var(--brand); }
+    .panel[hidden] { display: none !important; }
+    .flow {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 10px;
+      padding: 18px;
+    }
+    .flow-step {
+      position: relative;
+      padding: 14px;
+      border: 1px solid var(--line);
+      border-radius: 12px;
+      background: var(--surface-soft);
+      text-align: center;
+      font-size: 12px;
+      font-weight: 800;
+    }
+    .flow-step:not(:last-child)::after {
+      content: "→";
+      position: absolute;
+      right: -12px;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--accent);
+      font-size: 19px;
+      z-index: 2;
+    }
+    .contingency {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 18px;
+      padding: 18px;
+    }
+    .contingency h3 { margin: 0 0 5px; }
+    .contingency p { margin: 0; color: var(--muted); font-size: 13px; line-height: 1.5; }
+    @media (max-width: 900px) {
+      .summary-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .filters { grid-template-columns: 1fr 1fr; }
+      .flow { grid-template-columns: 1fr 1fr; }
+      .flow-step:nth-child(2)::after { display: none; }
+    }
+    @media (max-width: 620px) {
+      .topbar, .hero, .contingency { align-items: stretch; flex-direction: column; }
+      .topbar .back-link { align-self: flex-start; }
+      .actions { justify-content: flex-start; }
+      .summary-grid, .mine-grid, .filters, .flow { grid-template-columns: 1fr; }
+      .flow-step::after { display: none !important; }
+      .metric .value { font-size: 24px; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div>
+      <p class="eyebrow">MineCAD · Control integral</p>
+      <h1>Administración de datos</h1>
+    </div>
+    <a class="back-link" href="index.html">Menú principal</a>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div>
+        <h2>Estado de la información operativa</h2>
+        <p>Supervisa actualización, trazabilidad y excepciones. La captura manual queda disponible sólo como contingencia.</p>
+      </div>
+      <div class="actions">
+        <button id="refreshButton" class="button primary" type="button">Actualizar datos</button>
+        <a class="button" href="captura.html">Captura manual</a>
+        <a class="button" href="https://docs.google.com/spreadsheets/d/1Ajyr3oThQwBr8Rmj7GckhqXEfc3CM8yJuXCAKT5_198/edit" target="_blank" rel="noopener">Abrir base</a>
+      </div>
+    </section>
+
+    <p id="statusLine" class="status-line">Consultando backend v26…</p>
+
+    <section class="summary-grid" aria-label="Resumen de ingesta">
+      <article class="metric">
+        <span class="label">Reportes normalizados</span>
+        <strong id="metricReports" class="value">—</strong>
+        <div id="metricPeriod" class="detail">Periodo: —</div>
+      </article>
+      <article class="metric">
+        <span class="label">Bitácora de ingesta</span>
+        <strong id="metricIngesta" class="value">—</strong>
+        <div id="metricTrace" class="detail">Trazabilidad: —</div>
+      </article>
+      <article class="metric">
+        <span class="label">Pendientes abiertos</span>
+        <strong id="metricPending" class="value">—</strong>
+        <div id="metricPendingDetail" class="detail">Pendiente / Revisar: —</div>
+      </article>
+      <article class="metric">
+        <span class="label">Backend</span>
+        <strong id="metricBackend" class="value" style="font-size:18px;line-height:1.25">—</strong>
+        <div class="detail">Arquitectura de ingesta v26</div>
+      </article>
+    </section>
+
+    <section class="mine-grid" aria-label="Última actualización por mina">
+      <article class="mine-card">
+        <div class="row">
+          <h3>Santa Maria</h3>
+          <span id="smBadge" class="badge warn">Sin consultar</span>
+        </div>
+        <div id="smDate" class="mine-date">—</div>
+        <div id="smCaption" class="mine-caption">Último reporte normalizado</div>
+      </article>
+      <article class="mine-card">
+        <div class="row">
+          <h3>Unificación/Hallazgo</h3>
+          <span id="uhBadge" class="badge warn">Sin consultar</span>
+        </div>
+        <div id="uhDate" class="mine-date">—</div>
+        <div id="uhCaption" class="mine-caption">Último reporte normalizado</div>
+      </article>
+    </section>
+
+    <section id="missingReportsCard" class="card" hidden>
+      <div class="card-head">
+        <div>
+          <h3>Reportes fuente faltantes</h3>
+          <p>Fechas sin reporte normalizado disponible en las fuentes cargadas.</p>
+        </div>
+      </div>
+      <div id="missingReportsBody" style="padding:18px;display:grid;gap:10px"></div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h3>Control de excepciones</h3>
+          <p>Los datos dudosos se mantienen aquí en lugar de completar la base con supuestos.</p>
+        </div>
+      </div>
+      <div class="tabs" role="tablist" aria-label="Administración de datos">
+        <button class="tab-button active" data-panel="pendingPanel" type="button">Pendientes</button>
+        <button class="tab-button" data-panel="aliasPanel" type="button">Alias / nomenclatura</button>
+        <button class="tab-button" data-panel="correctionsPanel" type="button">Correcciones manuales</button>
+      </div>
+
+      <div id="pendingPanel" class="panel">
+        <div class="filters">
+          <select id="pendingMine" aria-label="Filtrar pendientes por mina">
+            <option value="">Todas las minas</option>
+            <option>Santa Maria</option>
+            <option>Unificación/Hallazgo</option>
+          </select>
+          <select id="pendingStatus" aria-label="Filtrar pendientes por estado">
+            <option value="">Todos los estados</option>
+            <option>Pendiente</option>
+            <option>Revisar</option>
+            <option>Resuelto</option>
+            <option>Ignorado</option>
+          </select>
+          <select id="pendingConfidence" aria-label="Filtrar pendientes por confianza">
+            <option value="">Toda confianza</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+            <option>N/A</option>
+          </select>
+          <input id="pendingSearch" type="search" placeholder="Buscar lugar, hoja, campo o nota…" />
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Fecha</th><th>Mina</th><th>Destino</th><th>Referencia</th><th>Tipo</th><th>Campos</th><th>Conf.</th><th>Estado</th><th>Nota</th>
+              </tr>
+            </thead>
+            <tbody id="pendingBody"></tbody>
+          </table>
+          <div id="pendingEmpty" class="empty" hidden>No hay pendientes con esos filtros.</div>
+        </div>
+      </div>
+
+      <div id="aliasPanel" class="panel" hidden>
+        <div class="filters" style="grid-template-columns:1fr 1fr 1.5fr">
+          <select id="aliasMine" aria-label="Filtrar alias por mina">
+            <option value="">Todas las minas</option>
+            <option>Santa Maria</option>
+            <option>Unificación/Hallazgo</option>
+          </select>
+          <select id="aliasConfidence" aria-label="Filtrar alias por confianza">
+            <option value="">Toda confianza</option>
+            <option>Alta</option>
+            <option>Media</option>
+            <option>Baja</option>
+          </select>
+          <input id="aliasSearch" type="search" placeholder="Buscar alias o lugar canónico…" />
+        </div>
+        <div class="table-wrap">
+          <table style="min-width:820px">
+            <thead>
+              <tr><th>Mina</th><th>Alias origen</th><th>Lugar canónico</th><th>Fuente</th><th>Conf.</th><th>Activo</th><th>Nota</th></tr>
+            </thead>
+            <tbody id="aliasBody"></tbody>
+          </table>
+          <div id="aliasEmpty" class="empty" hidden>No hay alias con esos filtros.</div>
+        </div>
+      </div>
+
+      <div id="correctionsPanel" class="panel" hidden>
+        <div class="contingency">
+          <div>
+            <h3>Correcciones manuales controladas</h3>
+            <p>La v26 expone los pendientes en MineCAD, pero todavía no modifica registros operativos desde esta pantalla. Para corregir un dato confirmado, abre la base, ajusta la hoja destino indicada en el pendiente y cambia su estado en <strong>03_PENDIENTES_INGESTA</strong>. Esto evita crear una segunda lógica de escritura antes de definir auditoría y permisos.</p>
+          </div>
+          <a class="button primary" href="https://docs.google.com/spreadsheets/d/1Ajyr3oThQwBr8Rmj7GckhqXEfc3CM8yJuXCAKT5_198/edit" target="_blank" rel="noopener">Abrir base de datos</a>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <div>
+          <h3>Flujo de información</h3>
+          <p>La captura directa deja de ser el proceso principal.</p>
+        </div>
+      </div>
+      <div class="flow">
+        <div class="flow-step">Correo / Excel fuente</div>
+        <div class="flow-step">Ingesta y normalización</div>
+        <div class="flow-step">Control de calidad</div>
+        <div class="flow-step">Dashboard y reportes</div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="contingency">
+        <div>
+          <h3>Captura manual / contingencia</h3>
+          <p>Se conserva para registrar información cuando el reporte fuente no esté disponible o sea necesario capturar una corrección operativa de forma excepcional.</p>
+        </div>
+        <a class="button" href="captura.html">Abrir captura manual</a>
+      </div>
+    </section>
+  </main>
+
+  <script>
+    "use strict";
+
+    const API_URL = "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
+    const EXPECTED_BACKEND = "2026.10.11-ingesta-v26.0";
+
+    let state = { summary: null, pending: [], aliases: [] };
+
+    const $ = id => document.getElementById(id);
+
+    function esc(value) {
+      return String(value ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+    }
+
+    async function request(action) {
+      const url = `${API_URL}?accion=${encodeURIComponent(action)}&_=${Date.now()}`;
+      const response = await fetch(url, { cache: "no-store" });
+      if (!response.ok) throw new Error(`${action}: HTTP ${response.status}`);
+      const payload = await response.json();
+      if (!payload.ok) throw new Error(payload.mensaje || `${action}: respuesta rechazada`);
+      return payload;
+    }
+
+    function formatDate(iso) {
+      if (!iso) return "—";
+      const parts = String(iso).split("-").map(Number);
+      if (parts.length !== 3 || parts.some(Number.isNaN)) return iso;
+      return new Date(parts[0], parts[1] - 1, parts[2]).toLocaleDateString("es-MX", {
+        day: "2-digit", month: "short", year: "numeric"
+      });
+    }
+
+    function daysFromToday(iso) {
+      if (!iso) return null;
+      const [y,m,d] = String(iso).split("-").map(Number);
+      if (![y,m,d].every(Number.isFinite)) return null;
+      const target = new Date(y, m - 1, d); target.setHours(0,0,0,0);
+      const today = new Date(); today.setHours(0,0,0,0);
+      return Math.max(0, Math.round((today - target) / 86400000));
+    }
+
+    function mineFreshness(iso) {
+      const days = daysFromToday(iso);
+      if (days === null) return { cls: "danger", text: "Sin datos", caption: "No hay fecha registrada" };
+      if (days <= 1) return { cls: "ok", text: "Actualizado", caption: days === 0 ? "Reporte del día" : "Último reporte: ayer" };
+      if (days <= 2) return { cls: "warn", text: `${days} días`, caption: `Último reporte hace ${days} días` };
+      return { cls: "danger", text: `${days} días`, caption: `Último reporte hace ${days} días` };
+    }
+
+    function renderSummary(payload) {
+      const data = payload?.datos || {};
+      state.summary = data;
+      $("metricReports").textContent = data.totalReportes ?? "—";
+      $("metricIngesta").textContent = data.totalIngesta ?? "—";
+      $("metricPending").textContent = data.pendientesAbiertos ?? "—";
+      $("metricBackend").textContent = payload.versionBackend || "—";
+      $("metricPeriod").textContent = `Periodo: ${formatDate(data.fechaInicial)} – ${formatDate(data.fechaFinal)}`;
+      const traceOk = Number(data.totalReportes) === Number(data.totalIngesta);
+      $("metricTrace").textContent = traceOk ? "Trazabilidad completa" : "Revisar diferencia reportes/ingesta";
+      const counts = data.pendientesPorEstado || {};
+      $("metricPendingDetail").textContent = `${counts.Pendiente || 0} pendientes · ${counts.Revisar || 0} por revisar`;
+
+      renderMineStatus("sm", data.ultimaFechaPorMina?.["Santa Maria"] || "");
+      renderMineStatus("uh", data.ultimaFechaPorMina?.["Unificación/Hallazgo"] || "");
+
+      if (payload.versionBackend !== EXPECTED_BACKEND) {
+        $("statusLine").className = "status-line error";
+        $("statusLine").textContent = `Advertencia: el frontend espera ${EXPECTED_BACKEND}, pero respondió ${payload.versionBackend || "una versión no identificada"}.`;
+      }
+    }
+
+    function renderMineStatus(prefix, iso) {
+      const fresh = mineFreshness(iso);
+      $(prefix + "Date").textContent = formatDate(iso);
+      const badge = $(prefix + "Badge");
+      badge.className = `badge ${fresh.cls}`;
+      badge.textContent = fresh.text;
+      $(prefix + "Caption").textContent = fresh.caption;
+    }
+
+    function badgeClass(value) {
+      const v = String(value || "").toLowerCase();
+      if (v === "revisar" || v === "media") return "warn";
+      if (v === "pendiente" || v === "baja") return "danger";
+      return "ok";
+    }
+
+    function renderMissingReports() {
+      const missing = state.pending.filter(row => row.tipoPendiente === "Reporte fuente no disponible");
+      const card = $("missingReportsCard");
+      const body = $("missingReportsBody");
+      if (!missing.length) {
+        card.hidden = true;
+        body.innerHTML = "";
+        return;
+      }
+
+      const byMine = new Map();
+      missing.forEach(row => {
+        if (!byMine.has(row.mina)) byMine.set(row.mina, []);
+        byMine.get(row.mina).push(row.fecha);
+      });
+
+      body.innerHTML = [...byMine.entries()].map(([mine, dates]) => {
+        const ordered = [...new Set(dates)].sort().reverse();
+        const chips = ordered.map(date => `<span class="badge danger">${esc(formatDate(date))}</span>`).join(" ");
+        return `<div style="display:flex;gap:12px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap;padding:12px;border:1px solid var(--line);border-radius:11px;background:var(--surface-soft)">
+          <strong>${esc(mine)}</strong><div style="display:flex;gap:6px;flex-wrap:wrap">${chips}</div>
+        </div>`;
+      }).join("");
+      card.hidden = false;
+    }
+
+    function renderPending() {
+      const mine = $("pendingMine").value;
+      const status = $("pendingStatus").value;
+      const confidence = $("pendingConfidence").value;
+      const q = $("pendingSearch").value.trim().toLowerCase();
+
+      const rows = state.pending.filter(row => {
+        if (mine && row.mina !== mine) return false;
+        if (status && row.estado !== status) return false;
+        if (confidence && row.confianza !== confidence) return false;
+        if (q) {
+          const haystack = [row.fecha,row.mina,row.hojaDestino,row.lugarReferencia,row.tipoPendiente,row.campos,row.confianza,row.estado,row.nota]
+            .join(" ").toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+
+      $("pendingBody").innerHTML = rows.map(row => `
+        <tr>
+          <td>${esc(formatDate(row.fecha))}</td>
+          <td>${esc(row.mina)}</td>
+          <td>${esc(row.hojaDestino)}</td>
+          <td>${esc(row.lugarReferencia || "—")}</td>
+          <td>${esc(row.tipoPendiente)}</td>
+          <td>${esc(row.campos)}</td>
+          <td><span class="badge ${badgeClass(row.confianza)}">${esc(row.confianza)}</span></td>
+          <td><span class="badge ${badgeClass(row.estado)}">${esc(row.estado)}</span></td>
+          <td class="note">${esc(row.nota)}</td>
+        </tr>`).join("");
+      $("pendingEmpty").hidden = rows.length !== 0;
+    }
+
+    function renderAliases() {
+      const mine = $("aliasMine").value;
+      const confidence = $("aliasConfidence").value;
+      const q = $("aliasSearch").value.trim().toLowerCase();
+
+      const rows = state.aliases.filter(row => {
+        if (mine && row.mina !== mine) return false;
+        if (confidence && row.confianza !== confidence) return false;
+        if (q) {
+          const haystack = [row.mina,row.aliasOrigen,row.lugarCanonico,row.seccionFuente,row.confianza,row.nota].join(" ").toLowerCase();
+          if (!haystack.includes(q)) return false;
+        }
+        return true;
+      });
+
+      $("aliasBody").innerHTML = rows.map(row => `
+        <tr>
+          <td>${esc(row.mina)}</td>
+          <td><strong>${esc(row.aliasOrigen)}</strong></td>
+          <td>${esc(row.lugarCanonico)}</td>
+          <td>${esc(row.seccionFuente)}</td>
+          <td><span class="badge ${badgeClass(row.confianza)}">${esc(row.confianza)}</span></td>
+          <td>${row.activo ? "Sí" : "No"}</td>
+          <td class="note">${esc(row.nota)}</td>
+        </tr>`).join("");
+      $("aliasEmpty").hidden = rows.length !== 0;
+    }
+
+    async function loadAll() {
+      const button = $("refreshButton");
+      button.disabled = true;
+      button.textContent = "Actualizando…";
+      $("statusLine").className = "status-line";
+      $("statusLine").textContent = "Consultando estado de ingesta, pendientes y nomenclatura…";
+
+      try {
+        const [summary, pending, aliases] = await Promise.all([
+          request("estado_ingesta"), request("pendientes_ingesta"), request("alias_lugares")
+        ]);
+        renderSummary(summary);
+        state.pending = Array.isArray(pending.datos) ? pending.datos : [];
+        state.aliases = Array.isArray(aliases.datos) ? aliases.datos : [];
+        renderMissingReports();
+        renderPending();
+        renderAliases();
+        if (summary.versionBackend === EXPECTED_BACKEND) {
+          $("statusLine").textContent = `Datos actualizados. ${state.pending.length} registros de control · ${state.aliases.length} alias activos.`;
+        }
+      } catch (error) {
+        console.error(error);
+        $("statusLine").className = "status-line error";
+        $("statusLine").textContent = `No fue posible consultar la administración de datos: ${error.message}`;
+      } finally {
+        button.disabled = false;
+        button.textContent = "Actualizar datos";
+      }
+    }
+
+    document.querySelectorAll(".tab-button").forEach(button => {
+      button.addEventListener("click", () => {
+        document.querySelectorAll(".tab-button").forEach(item => item.classList.toggle("active", item === button));
+        document.querySelectorAll(".panel").forEach(panel => panel.hidden = panel.id !== button.dataset.panel);
+      });
+    });
+
+    ["pendingMine","pendingStatus","pendingConfidence","pendingSearch"].forEach(id => $(id).addEventListener("input", renderPending));
+    ["aliasMine","aliasConfidence","aliasSearch"].forEach(id => $(id).addEventListener("input", renderAliases));
+    $("refreshButton").addEventListener("click", loadAll);
+
+    loadAll();
+  </script>
+</body>
+</html>
