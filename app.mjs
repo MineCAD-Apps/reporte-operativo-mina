@@ -1,4 +1,4 @@
-import {monthlyExcelReport,annualExcelReport,annualComparisonReport,projectExcelGrid,costDetailReport,monthName} from './report-views.mjs?v=annual-side-by-side-1';
+import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindComparisonScroll,projectExcelGrid,costDetailReport,monthName} from './report-views.mjs?v=independent-panels-1';
 import {PlanningClient} from './api-client.mjs';
 import {planningConfig} from './planning-config.mjs';
 import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs';
@@ -33,6 +33,7 @@ function renderMonths(){const keys=monthKeys();if(!keys.includes(reportMonth))re
 function renderAnnual(){const records=monthKeys().map(month=>({...costs(month),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(months[month]?.[w.id]||0),0)}));$('#content').innerHTML=annualExcelReport(records)}
 let compareSelected=new Set;
 function renderComparison(){
+ $('#compareResults')._comparisonCleanup?.();
  if(!window.compareInitialized){base.plans.slice(0,2).forEach(p=>compareSelected.add(p.id));window.compareInitialized=true}
  $('#compareChoices').innerHTML=base.plans.map(p=>`<div class="choice"><input type="checkbox" data-compare="${esc(p.id)}" id="compare-${esc(p.id)}" ${compareSelected.has(p.id)?'checked':''}><label for="compare-${esc(p.id)}">${esc(p.name)}<small>${esc(p.comments)}<br>Actualizado: ${esc(p.updatedAt?.slice(0,10)||'')}</small></label></div>`).join('');
  const chosen=base.plans.filter(p=>compareSelected.has(p.id));
@@ -44,7 +45,7 @@ function renderComparison(){
   const records=keys.map(month=>({...costs(month,base,distribution),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(distribution[month]?.[w.id]||0),0)}));
   return {name:p.name,comments:p.comments,records};
  });
- $('#compareResults').innerHTML=annualComparisonReport(scenarios);
+ $('#compareResults').innerHTML=annualComparisonReport(scenarios);bindComparisonScroll($('#compareResults'));
 }
 
 function changed(next=plan){validate(base,next);plan=next;dirty=true;calculate();localStorage.setItem(DRAFT,JSON.stringify({sourceSHA:base.sourceSHA256,plan}));render()}

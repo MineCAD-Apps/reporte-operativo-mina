@@ -36,3 +36,23 @@
 .annual-comparison-sheet thead tr:first-child th:first-child{left:0;top:0;z-index:5;min-width:270px;background:#263746;color:white}
 .annual-comparison-sheet td{min-width:92px;padding:8px 9px}
 .annual-comparison-sheet td.annual-total,.annual-comparison-sheet thead tr:nth-child(2) th.annual-total{border-right:2px solid #8da7bd;background:#e3eef8;font-weight:750;min-width:110px}
+
+/* Separate scenario viewports around one shared concept column. */
+.annual-compare-grid{display:grid;grid-template-columns:repeat(var(--left-panels),minmax(0,1fr)) 250px repeat(var(--right-panels),minmax(0,1fr));gap:10px;align-items:start;width:100%;min-width:0}
+.scenario-panel,.concept-panel{min-width:0;overflow:hidden;border:1px solid #b8c6d1;background:#fff;border-radius:6px}
+.scenario-title{height:42px;line-height:22px;margin:0;padding:10px 12px;background:#174e80;color:#fff;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.concept-panel .scenario-title{background:#263746;text-align:center}
+.scenario-scroll,.concept-scroll{height:min(68vh,960px);overflow:auto;overscroll-behavior:contain;box-sizing:border-box}
+.scenario-scroll{scrollbar-gutter:stable}
+.concept-scroll{scrollbar-width:none}.concept-scroll::-webkit-scrollbar{display:none}
+.scenario-table,.concept-table{border-collapse:separate;border-spacing:0;font-size:11px;min-width:100%;table-layout:fixed}
+.scenario-table{width:max-content}.concept-table{width:100%}
+.scenario-table th,.scenario-table td,.concept-table th{height:36px;padding:7px 8px;box-sizing:border-box;border-bottom:1px solid #d7dfe5;border-right:1px solid #e4e9ee;position:static;min-width:0;max-width:none;white-space:nowrap;font-variant-numeric:tabular-nums}
+.scenario-table th,.scenario-table td{width:102px;min-width:102px}.scenario-table th:first-child,.scenario-table td:first-child{position:static;left:auto;width:102px;min-width:102px;max-width:none;background:inherit}
+.concept-table th:first-child{position:static;min-width:0;max-width:none;width:100%;text-align:left;overflow:hidden;text-overflow:ellipsis;font-weight:450;background:#fff}
+.scenario-table thead th,.scenario-table thead th:first-child,.concept-table thead th:first-child{position:sticky;top:0;left:auto;z-index:2;background:#e9f0f7;color:var(--ink);font-weight:750}
+.scenario-table .annual-total{background:#e3eef8!important;font-weight:750;min-width:115px}
+.scenario-table .headline td,.concept-table .headline th{background:#f0f4f7!important;font-weight:750}.scenario-table .ratio td,.concept-table .ratio th{border-bottom:2px solid #bdcbd7}
+.scenario-scroll:focus-visible{outline:2px solid var(--blue);outline-offset:-2px}
+@media(max-width:1000px){.annual-compare-grid{grid-template-columns:repeat(var(--left-panels),minmax(0,1fr)) 205px repeat(var(--right-panels),minmax(0,1fr));gap:6px}.concept-table th{font-size:10px;padding:7px 5px}}
+@media(max-width:650px){.annual-compare-grid{grid-template-columns:repeat(var(--left-panels),minmax(0,1fr)) 145px repeat(var(--right-panels),minmax(0,1fr));gap:4px}.scenario-title{font-size:11px;padding:10px 5px}.concept-table th{font-size:9px}.scenario-table th,.scenario-table td{font-size:10px;min-width:90px}}

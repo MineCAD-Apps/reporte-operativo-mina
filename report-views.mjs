@@ -50,12 +50,29 @@ export function costDetailReport({work,month,quantity,cost}){
  return `<p>${esc(monthName(month))} · ${fmt(quantity)} ${esc(work.unit)}</p><table class="detail-cost-sheet"><tbody>${[['Explosivos y artificios',d.explosives],['Acero',d.steel],['Rezagado · scoop',d.scoopCost],['Acarreo · camión',d.truckCost],['Sostenimiento',d.supportCost],['Horas extra asignadas',d.overtime],['Bono asignado',d.bonus],['Costo directo total',d.direct],['Costo directo por '+work.unit,cost.unitCosts[work.id]]].map(([label,value])=>`<tr><th>${esc(label)}</th>${cell(value)}</tr>`).join('')}</tbody></table><h3>Recursos calculados</h3><table class="detail-cost-sheet"><tbody>${[['Horas scoop',d.scoopHours],['Horas camión',d.truckHours],['Toneladas a mover',d.tonsMoved],['Metros de barrenación',d.drillMeters],['Anclas con provisión',d.bolts],['Malla con provisión (rollos)',d.meshRolls]].map(([label,value])=>`<tr><th>${esc(label)}</th>${cell(value,fmt)}</tr>`).join('')}</tbody></table><p class="report-note">Costo directo por obra: excluye nómina fija y comunes sin asignar.</p>`;
 }
 
+
 export function annualComparisonReport(scenarios){
  const years=[...new Set(scenarios.flatMap(s=>s.records.map(r=>r.month.slice(0,4))))].sort();
  const annualValue=(definition,records)=>{const[label,get,,style]=definition;if(style==='ratio'){const tons=records.reduce((sum,r)=>sum+(Number(r.tons)||0),0),cost=records.reduce((sum,r)=>sum+(Number(r.total)||0),0),fixed=records.reduce((sum,r)=>sum+(Number(r.fixed)||0),0);return tons>0?(cost-(label.includes('CUV')?fixed:0))/tons:null}return records.some(r=>get(r)!==null&&get(r)!==undefined)?records.reduce((sum,r)=>sum+(Number(get(r))||0),0):null};
  return years.map(year=>{
-  const keys=[...new Set(scenarios.flatMap(s=>s.records.filter(r=>r.month.startsWith(year)).map(r=>r.month)))].sort();
-  const blocks=scenarios.map(s=>({...s,rows:s.records.filter(r=>r.month.startsWith(year))}));
-  return `<section class="annual-report"><h2>Resumen ${year} · comparativa</h2><p>${monthName(keys[0])} a ${monthName(keys.at(-1))}</p><div class="annual-scroll"><table class="annual-sheet annual-comparison-sheet"><thead><tr><th rowspan="2" scope="col">Concepto</th>${blocks.map(s=>`<th class="plan-group" scope="colgroup" colspan="${keys.length+1}" title="${esc(s.name)}${s.comments?' · '+esc(s.comments):''}">${esc(s.name)}</th>`).join('')}</tr><tr>${blocks.map(()=>keys.map(key=>`<th class="num" scope="col">${esc(shortMonth(key))}</th>`).join('')+`<th class="num annual-total" scope="col">Total ${year}</th>`).join('')}</tr></thead><tbody>${ANNUAL_ROWS.map(definition=>{const[label,get,format,style]=definition;return `<tr class="${style}"><th scope="row">${esc(label)}</th>${blocks.map(s=>keys.map(key=>{const r=s.rows.find(r=>r.month===key);return `<td class="num">${r?format(get(r)):''}</td>`}).join('')+`<td class="num annual-total">${format(annualValue(definition,s.rows))}</td>`).join('')}</tr>`}).join('')}</tbody></table></div><p class="report-note">Precios vigentes para todos los planes. CUV y CUT anuales calculados sobre las toneladas del periodo.</p></section>`;
+  const keys=[...new Set(scenarios.flatMap(s=>s.records.filter(r=>r.month.startsWith(year)).map(r=>r.month)))].sort(),middle=Math.floor(scenarios.length/2);
+  const concepts=`<aside class="concept-panel"><h3 class="scenario-title">Conceptos</h3><div class="concept-scroll" data-compare-scroll><table class="concept-table"><thead><tr><th scope="col">Resumen ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(([label,,,style])=>`<tr class="${style}"><th scope="row" title="${esc(label)}">${esc(label)}</th></tr>`).join('')}</tbody></table></div></aside>`;
+  const panels=scenarios.map((scenario,i)=>{
+   const rows=scenario.records.filter(r=>r.month.startsWith(year));
+   const panel=`<section class="scenario-panel" aria-label="${esc(scenario.name)}"><h3 class="scenario-title" title="${esc(scenario.name)}">${esc(scenario.name)}</h3><div class="scenario-scroll" data-compare-scroll tabindex="0" role="region" aria-label="Meses del escenario ${esc(scenario.name)}"><table class="scenario-table"><thead><tr>${keys.map(key=>`<th class="num" scope="col">${esc(shortMonth(key))}</th>`).join('')}<th class="num annual-total" scope="col">Total ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(definition=>{const[label,get,format,style]=definition;return `<tr class="${style}">${keys.map(key=>{const r=rows.find(r=>r.month===key);return `<td class="num" aria-label="${esc(label)} · ${esc(shortMonth(key))}">${r?format(get(r)):''}</td>`}).join('')}<td class="num annual-total" aria-label="${esc(label)} · Total ${year}">${format(annualValue(definition,rows))}</td></tr>`}).join('')}</tbody></table></div></section>`;
+   return (i===middle?concepts:'')+panel;
+  }).join('');
+  return `<section class="annual-report"><h2>Resumen ${year} · comparativa</h2><p>${monthName(keys[0])} a ${monthName(keys.at(-1))}</p><div class="annual-compare-grid" style="--left-panels:${middle};--right-panels:${scenarios.length-middle}">${panels}</div><p class="report-note">Cada escenario tiene su propio desplazamiento horizontal. Los renglones se mantienen alineados al desplazarse verticalmente.</p></section>`;
  }).join('');
+}
+export function bindComparisonScroll(root){
+ root._comparisonCleanup?.();const cleanups=[];
+ root.querySelectorAll('.annual-compare-grid').forEach(group=>{
+  const panes=[...group.querySelectorAll('[data-compare-scroll]')],concept=group.querySelector('.concept-scroll');let syncing=false;
+  const sync=event=>{if(syncing)return;syncing=true;for(const pane of panes)if(pane!==event.currentTarget&&Math.abs(pane.scrollTop-event.currentTarget.scrollTop)>0.5)pane.scrollTop=event.currentTarget.scrollTop;requestAnimationFrame(()=>{syncing=false})};
+  panes.forEach(pane=>{pane.addEventListener('scroll',sync,{passive:true});cleanups.push(()=>pane.removeEventListener('scroll',sync))});
+  const matchGutter=()=>{const sample=group.querySelector('.scenario-scroll');if(sample&&concept)concept.style.paddingBottom=Math.max(0,sample.offsetHeight-sample.clientHeight-2)+'px'};matchGutter();
+  if(typeof ResizeObserver!=='undefined'){const observer=new ResizeObserver(matchGutter);observer.observe(group);cleanups.push(()=>observer.disconnect())}
+ });
+ root._comparisonCleanup=()=>{cleanups.forEach(fn=>fn());root._comparisonCleanup=null};
 }
