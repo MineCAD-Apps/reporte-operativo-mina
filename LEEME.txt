@@ -1,0 +1,25 @@
+ACTUALIZACIÓN: PROYECTO EDITABLE
+
+Sube los cuatro archivos de esta carpeta a la raíz del repositorio de MINECAD:
+- app.mjs (sustituir)
+- project-sync.mjs (nuevo)
+- planeacion.html (sustituir)
+- comparacion-planes.html (sustituir)
+
+Espera a que GitHub publique la actualización y recarga con Ctrl+F5.
+No hay cambios de Apps Script ni de JSON. No ejecutes otra vez la migración.
+
+FUNCIONAMIENTO
+1. Agrega o elimina filas en la hoja de proyecto, manteniendo los encabezados y el orden de columnas.
+2. Cada obra debe tener un ID único y estable, nombre, tipo, unidad, objetivo, alcance inicial y ritmo inicial. Usa las mismas áreas y secciones de los catálogos para calcular costos. Puedes dejar Fila modelo vacía en obras nuevas: la app asignará una referencia interna sin duplicados.
+3. Modifica las columnas Obra Precedente 1/2 y Regla 1/2 para cambiar la secuencia. Si eliminas una obra, limpia o sustituye sus referencias en otras filas. La app muestra un error si falta una precedente o si hay un ciclo.
+4. En MINECAD, pulsa Actualizar base. Al abrir un escenario también se aplica el proyecto vigente.
+5. Las obras nuevas se incorporan a cada escenario cargado con sus valores iniciales. El ritmo se fija en la semana del inicio del plan y se respeta el inicio mínimo de la obra.
+6. Las obras eliminadas dejan de mostrarse y se retiran sus ritmos y pausas de la copia cargada. Las obras que conservan su ID mantienen sus ajustes. Cambiar un ID equivale a eliminar una obra y agregar otra.
+7. Si el objetivo total se reduce por debajo del alcance de un escenario, el alcance se limita al nuevo objetivo, con aviso.
+8. Un ajuste previo a capacidad se invalida si cambia su programación; se debe revisar y aplicar nuevamente Proponer ajuste.
+9. Los escenarios se adaptan en memoria al proyecto actual. El registro guardado cambia cuando pulses Guardar; usa Guardar como nuevo para conservar otra copia. La comparación usa el mismo catálogo actual para todos los escenarios.
+10. Nuevo desde base inicia con las obras y ritmos actuales. Guardar como nuevo copia los ajustes del escenario abierto.
+
+VALIDACIÓN
+Pruebas de altas/bajas, conservación de ritmos futuros y pausas, cambios de precedencias, detección de ciclos y referencias inexistentes, límites de alcance y asignación de referencias del modelo. Las regresiones preservan los calendarios de los tres planes existentes y los resultados de costos de 113 reportes mensuales. Carga, actualización, guardado y comparación comprobados con DOM y servicio simulados.
