@@ -1,4 +1,4 @@
-import {monthlyExcelReport,annualExcelReport,projectExcelGrid,costDetailReport,monthName} from './report-views.mjs?v=excel-layout-1';
+import {monthlyExcelReport,annualExcelReport,annualComparisonReport,projectExcelGrid,costDetailReport,monthName} from './report-views.mjs?v=annual-side-by-side-1';
 import {PlanningClient} from './api-client.mjs';
 import {planningConfig} from './planning-config.mjs';
 import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs';
@@ -39,11 +39,12 @@ function renderComparison(){
  $('#compareResults').classList.add('annual-canvas');
  if(chosen.length<2){$('#compareResults').innerHTML='<p class="empty">Selecciona al menos dos planes para comparar sus resúmenes anuales.</p>';return}
  const keys=monthKeys();
- $('#compareResults').innerHTML=chosen.map(p=>{
+ const scenarios=chosen.map(p=>{
   const computed=schedule(base,p),distribution=monthly(computed);
   const records=keys.map(month=>({...costs(month,base,distribution),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(distribution[month]?.[w.id]||0),0)}));
-  return `<article class="annual-comparison-plan"><div class="section-title"><div><h2>${esc(p.name)}</h2>${p.comments?`<p>${esc(p.comments)}</p>`:''}</div></div>${annualExcelReport(records)}</article>`;
- }).join('');
+  return {name:p.name,comments:p.comments,records};
+ });
+ $('#compareResults').innerHTML=annualComparisonReport(scenarios);
 }
 
 function changed(next=plan){validate(base,next);plan=next;dirty=true;calculate();localStorage.setItem(DRAFT,JSON.stringify({sourceSHA:base.sourceSHA256,plan}));render()}

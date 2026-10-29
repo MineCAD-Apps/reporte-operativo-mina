@@ -27,3 +27,12 @@
 .project-grid .weekly-cell button.has-work.work-development{background:#dceaff;color:#173f73}
 .project-grid .weekly-cell button.has-work.work-preparation{background:#fff0c2;color:#654900}
 .project-grid .weekly-cell button.has-work.work-stoping{background:#def0df;color:#205333}
+
+/* One shared concept column, adjacent annual plan blocks. */
+.annual-comparison-sheet thead tr:first-child{height:38px}
+.annual-comparison-sheet thead tr:first-child th{top:0}
+.annual-comparison-sheet thead .plan-group{text-align:center;max-width:0;overflow:hidden;text-overflow:ellipsis;border-right:2px solid #8da7bd;background:#174e80}
+.annual-comparison-sheet thead tr:nth-child(2) th{top:38px;left:auto;min-width:92px;max-width:none;z-index:2;background:#e7eef5;color:var(--ink);text-align:right}
+.annual-comparison-sheet thead tr:first-child th:first-child{left:0;top:0;z-index:5;min-width:270px;background:#263746;color:white}
+.annual-comparison-sheet td{min-width:92px;padding:8px 9px}
+.annual-comparison-sheet td.annual-total,.annual-comparison-sheet thead tr:nth-child(2) th.annual-total{border-right:2px solid #8da7bd;background:#e3eef8;font-weight:750;min-width:110px}
