@@ -1,26 +1,31 @@
 {
   "ok": true,
-  "rows": [
-    "Toneladas Producidas",
-    "Costos Operativos",
-    "Costo Unitario Operativo",
-    "Valor Mineral",
-    "Margen Operativo",
-    "Metros Desarrollados",
-    "Costos Administrativos",
-    "Costo Acarreo a Planta",
-    "Costo Total",
-    "Costo Unitario Total",
-    "Margen Puesto en Planta"
+  "fixture": [
+    600,
+    600,
+    300
   ],
-  "weightedTotals": true,
-  "currencyPerMonth": true,
-  "pendingStrict": true,
-  "expandCollapse": true,
-  "noComparisonDetails": true,
-  "realMonthsReconciled": 12,
-  "noDatabaseChanges": true,
-  "published": false,
-  "visualBrowser": false,
-  "startupPassed": true
+  "plans": [
+    {
+      "name": "Plan inicial · configuración nueva",
+      "priorOver": 0,
+      "newOver": 0,
+      "largest": null,
+      "monthlyAndSegmentsUnchanged": true
+    },
+    {
+      "name": "Plan inicial 34.5 metros semanales",
+      "priorOver": 35,
+      "newOver": 0,
+      "largest": {
+        "workId": "Reb-1750-P",
+        "week": "2027-08-30",
+        "before": 2500,
+        "after": 501.718620362688,
+        "max": 600
+      },
+      "monthlyAndSegmentsUnchanged": true
+    }
+  ],
+  "databaseChanged": false
 }

@@ -26,7 +26,7 @@ export function schedule(base,plan){
  const signature=stableStringify(planSignatureInputs(base,plan));
  if(plan.leveledSegments&&matchesSignature(plan.levelingSource,JSON.parse(signature))){
   for(const w of base.works)rows[w.id]={work:w,start:null,end:null,weekly:{},segments:[],quantity:+plan.works[w.id].quantity,pending:0};
-  for(const seg of plan.leveledSegments){const r=rows[seg.workId];r.start??=seg.start;r.end=seg.end;r.segments.push(seg);r.weekly[weekAt(seg.start)]=(r.weekly[weekAt(seg.start)]||0)+seg.quantity;segments.push(seg)}
+  for(const seg of plan.leveledSegments){const r=rows[seg.workId];r.start??=seg.start;r.end=seg.end;r.segments.push(seg);let t=seg.start;while(t<seg.end-EPS){const week=Math.floor((t+EPS)/6)*6,until=Math.min(seg.end,week+6),q=seg.quantity*(until-t)/(seg.end-seg.start);r.weekly[weekAt(t)]=(r.weekly[weekAt(t)]||0)+q;t=until;}segments.push(seg)}
   return {start:tick(plan.start),rows,segments,warnings,capacities:plan.capacityAdjustment?.version===1?[]:capacityConflicts(base,plan,segments),capacityAdjustment:plan.capacityAdjustment,productionAdjustment:plan.productionAdjustment,productionCaps:plan.productionCaps,end:Math.max(tick(plan.start),...segments.map(s=>s.end))};
  }
  if(plan.autoAdjust)return schedule(base,levelCapacity(base,plan));
