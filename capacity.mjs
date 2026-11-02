@@ -1,3 +1,4 @@
+import {stableStringify,matchesSignature} from './plan-signature.mjs?v=compare-plans-1';
 // Discrete mine-wide linear capacity, in complete 1.5 m blast equivalents.
 export const BLAST=1.5;
 const EPS=1e-8;
@@ -76,6 +77,6 @@ export function discreteLevelCapacity(base,input,cal){
  resolveOther();if(other.some(w=>remaining[w.id]>EPS))throw Error('Hay obras sin ritmo suficiente después de sus precedentes.');
  p.leveledSegments=segments.sort((a,b)=>a.start-b.start||a.workId.localeCompare(b.workId));
  p.capacityAdjustment={version:1,blastSize:BLAST,maxNormal:12,maxRaise:9,blastCount,weeks:weeklyInfo};
- p.levelingAppliedAt=new Date().toISOString();p.levelingSource=JSON.stringify({rates:p.rates,pauses:p.pauses,works:p.works,capacities:p.capacities,dependencies:base.dependencies});
+ p.levelingAppliedAt=new Date().toISOString();p.levelingSource=stableStringify({rates:p.rates,pauses:p.pauses,works:p.works,capacities:p.capacities,dependencies:base.dependencies});
  delete p.leveledWeekly;return p;
 }

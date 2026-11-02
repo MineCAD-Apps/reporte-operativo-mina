@@ -1,4 +1,5 @@
-import {discreteLevelCapacity} from './capacity.mjs?v=capacity-shots-1';
+import {stableStringify,matchesSignature} from './plan-signature.mjs?v=compare-plans-1';
+import {discreteLevelCapacity} from './capacity.mjs?v=compare-plans-1';
 /** MineCAD planning kernel. UTC dates; continuous six-day work calendar. */
 const MS=86400000,ANCHOR=Date.UTC(2026,9,5)/MS,EPS=1e-8;
 export const day=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))throw Error('Fecha inválida: '+s);const n=Date.parse(s+'T00:00:00Z')/MS;if(!Number.isFinite(n)||new Date(n*MS).toISOString().slice(0,10)!==s)throw Error('Fecha inválida: '+s);return n};
@@ -20,8 +21,8 @@ export function validate(base,plan){
 }
 export function schedule(base,plan){
  const order=validate(base,plan),rows={},warnings=[],segments=[];
- const signature=JSON.stringify({rates:plan.rates,pauses:plan.pauses,works:plan.works,capacities:plan.capacities,dependencies:base.dependencies});
- if(plan.leveledSegments&&plan.levelingSource===signature){
+ const signature=stableStringify({rates:plan.rates,pauses:plan.pauses,works:plan.works,capacities:plan.capacities,dependencies:base.dependencies});
+ if(plan.leveledSegments&&matchesSignature(plan.levelingSource,JSON.parse(signature))){
   for(const w of base.works)rows[w.id]={work:w,start:null,end:null,weekly:{},segments:[],quantity:+plan.works[w.id].quantity,pending:0};
   for(const seg of plan.leveledSegments){const r=rows[seg.workId];r.start??=seg.start;r.end=seg.end;r.segments.push(seg);r.weekly[weekAt(seg.start)]=(r.weekly[weekAt(seg.start)]||0)+seg.quantity;segments.push(seg)}
   return {start:tick(plan.start),rows,segments,warnings,capacities:plan.capacityAdjustment?.version===1?[]:capacityConflicts(base,plan,segments),capacityAdjustment:plan.capacityAdjustment,end:Math.max(tick(plan.start),...segments.map(s=>s.end))};
@@ -61,4 +62,4 @@ export function monthly(result){
  Object.defineProperty(out,'bounds',{value:{from:dateAt(result.start??0).slice(0,7),to:endDate(result.end).slice(0,7)}});return out;
 }
 export function setRate(plan,workId,week,rate){day(week);if(!Number.isFinite(+rate)||+rate<0)throw Error('El ritmo debe ser un número no negativo');const p=engineClone(plan);p.rates=p.rates.filter(r=>r.workId!==workId||r.week!==week);p.rates.push({planId:p.id,workId,week,rate:+rate});delete p.leveledWeekly;delete p.levelingSource;delete p.leveledSegments;delete p.capacityAdjustment;return p}
-export function newPlan(plan,name,comments){if(!name.trim())throw Error('Escribe un nombre');const p=engineClone(plan);p.id=globalThis.crypto?.randomUUID?.()||'plan-'+Date.now();p.name=name.trim();p.comments=comments;p.createdAt=p.updatedAt=new Date().toISOString();p.revision=0;let source=null;if(p.levelingSource&&p.leveledSegments){try{const original=JSON.parse(p.levelingSource);const current={rates:p.rates,pauses:p.pauses,works:p.works,capacities:p.capacities,dependencies:p.projectDependencies||original.dependencies};if(JSON.stringify(current)===p.levelingSource)source=current}catch{}}for(const r of p.rates)r.planId=p.id;if(source){source.rates=p.rates;p.levelingSource=JSON.stringify(source)}else{for(const k of ['leveledSegments','leveledWeekly','levelingSource','capacityAdjustment'])delete p[k]}return p}
+export function newPlan(plan,name,comments){if(!name.trim())throw Error('Escribe un nombre');const p=engineClone(plan);p.id=globalThis.crypto?.randomUUID?.()||'plan-'+Date.now();p.name=name.trim();p.comments=comments;p.createdAt=p.updatedAt=new Date().toISOString();p.revision=0;let source=null;if(p.levelingSource&&p.leveledSegments){try{const original=JSON.parse(p.levelingSource);const current={rates:p.rates,pauses:p.pauses,works:p.works,capacities:p.capacities,dependencies:p.projectDependencies||original.dependencies};if(matchesSignature(p.levelingSource,current))source=current}catch{}}for(const r of p.rates)r.planId=p.id;if(source){source.rates=p.rates;p.levelingSource=stableStringify(source)}else{for(const k of ['leveledSegments','leveledWeekly','levelingSource','capacityAdjustment'])delete p[k]}return p}

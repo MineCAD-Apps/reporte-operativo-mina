@@ -1,10 +1,10 @@
 import {availableYears,yearPeriod} from './year-range.mjs?v=annual-years-1';
 import {openCapacityEditor} from './capacity-editor.mjs?v=capacity-shots-1';
-import {reconcileProject,assignModelRows} from './project-sync.mjs?v=project-sync-1';
+import {reconcileProject,assignModelRows} from './project-sync.mjs?v=compare-plans-1';
 import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindComparisonScroll,projectExcelGrid,costDetailReport,monthName} from './report-views.mjs?v=capacity-shots-1';
 import {PlanningClient} from './api-client.mjs';
 import {planningConfig} from './planning-config.mjs';
-import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs?v=capacity-shots-1';
+import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs?v=compare-plans-1';
 import {CostModel} from './costs.mjs?v=capacity-shots-1';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),fmt=(n,d=2)=>n===null||n===undefined?'—':Number(n).toLocaleString('es-MX',{maximumFractionDigits:d,minimumFractionDigits:d}),money=n=>n===null||n===undefined?'—':'$'+fmt(n,0),clone=x=>JSON.parse(JSON.stringify(x));
 const STORAGE='minecad.planning.v1',DRAFT='minecad.planning.draft.v1';let base,model,plan,result,months,costCache={},dirty=false,tab='months',reportMonth='',editHandler,proposal,cloud=false,compareMode=document.body.dataset.view==='compare';
