@@ -78,7 +78,7 @@ $('#newplan').onclick=()=>{if(dirty&&!confirm('Hay cambios sin guardar. ¿Descar
 $('#save').onclick=()=>save();$('#load').onclick=()=>{if(dirty&&!confirm('Hay cambios sin guardar. ¿Descartarlos y cargar otro plan?'))return;try{plan=clone(base.plans.find(p=>p.id===$('#plans').value));dirty=false;localStorage.removeItem(DRAFT);calculate();render()}catch(e){fail(e)}};
 $('#saveas').onclick=()=>showEditor('Guardar como nuevo plan','ESCENARIOS',`<label>Nombre<input id="newName" value="${esc(plan.name+' · alternativa')}" required maxlength="160"></label><label>Comentarios<textarea id="newComments" rows="4">${esc(plan.comments)}</textarea></label>`,async()=>{plan=newPlan(plan,$('#newName').value,$('#newComments').value);dirty=true;await save(true)});
 $('#details').onclick=()=>showEditor('Nombre y comentarios','PLAN',`<label>Nombre<input id="newName" value="${esc(plan.name)}" required maxlength="160"></label><label>Comentarios<textarea id="newComments" rows="4">${esc(plan.comments)}</textarea></label>`,()=>{if(!$('#newName').value.trim())throw Error('Escribe un nombre');plan.name=$('#newName').value.trim();plan.comments=$('#newComments').value;changed()});
-$('#economics').onclick=()=>{try{
+if($('#economics'))$('#economics').onclick=()=>{try{
  if(!catalog.capabilities?.economics||!base.economics)throw Error('Actualiza Apps Script con la versión de valores y transporte.');
  openEconomicsEditor({catalog:base.economics,mineId:currentMine,works:base.works,showEditor,esc,save:async payload=>{
   const button=$('#editForm button[type="submit"]');button.disabled=true;
