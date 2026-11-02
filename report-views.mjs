@@ -1,4 +1,3 @@
-import {economicTotal} from './economics.mjs?v=economics-1';
 const esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 const fmt=(n,d=2)=>n===null||n===undefined?'':Number(n).toLocaleString('es-MX',{maximumFractionDigits:d,minimumFractionDigits:d});
 const usd=n=>n===null||n===undefined?'Pendiente':'US$ '+fmt(n,0);
@@ -37,25 +36,66 @@ export function economicsDetails(e){
  if(!e?.rows?.length)return '';
  return `<section class="economic-summary"><h3>Valoración por obra</h3><div class="economic-scroll"><table><thead><tr><th>Obra / zona</th><th>Ton a producir</th><th>Ancho veta m</th><th>Ancho minar m</th><th>Dilución peso</th><th>Valor diluido USD/t</th><th>Valor USD</th><th>Acarreo a planta MXN</th></tr></thead><tbody>${e.rows.map(r=>`<tr><td>${esc(r.name)}<small>${esc(r.zone||'Zona pendiente')}</small></td>${cell(r.tons,fmt)}${cell(r.veinWidth,fmt)}${cell(r.miningWidth,fmt)}${cell(r.dilution,pct)}${cell(r.valuePerTonUsd,usd)}${cell(r.valueUsd,usd)}${cell(r.haulMxn)}</tr>`).join('')}</tbody></table></div></section>`;
 }
-const ECONOMIC_ROWS=[
- ['Valor mineral diluido · USD',c=>c.economics?.valueUsd,usd,'economic','valueUsd'],
- ['Costo minero · USD',c=>c.economics?.mineUsd,usd,'economic','mineUsd'],
- ['Acarreo mina–planta · USD',c=>c.economics?.haulUsd,usd,'economic','haulUsd'],
- ['Costo puesto en planta · USD',c=>c.economics?.plantUsd,usd,'economic','plantUsd'],
- ['Margen antes de beneficio · USD',c=>c.economics?.marginUsd,usd,'economic','marginUsd'],
- ['Margen sobre valor estimado',c=>c.economics?.marginPct,pct,'economic','marginPct']
+const annualNumber=v=>typeof v==='number'&&Number.isFinite(v)?v:null;
+const annualSum=(rows,key)=>rows.every(r=>r[key]!==null)?rows.reduce((s,r)=>s+r[key],0):null;
+const annualSubtract=(a,b)=>a===null||b===null?null:a-b;
+const annualDivide=(a,b)=>a===null||b===null||b<=0?null:a/b;
+const annualUnit=n=>n===null?'—':'US$ '+fmt(n,2);
+const annualQuantity=n=>n===null?'—':fmt(n);
+/** The same financial definitions serve the annual summary and all scenario columns. */
+export function annualMetrics(record){
+ const fx=annualNumber(record.economics?.fx),convert=n=>n===null||fx===null||fx<=0?null:n/fx;
+ const tons=annualNumber(record.tons),meters=annualNumber(record.meters),mine=annualNumber(record.total),fixed=annualNumber(record.fixed);
+ const operating=convert(annualSubtract(mine,fixed)),admin=convert(fixed),haul=annualNumber(record.economics?.haulUsd),value=annualNumber(record.economics?.valueUsd);
+ const cost=operating===null||admin===null||haul===null?null:operating+admin+haul;
+ return {tons,meters,operating,operatingUnit:annualDivide(operating,tons),value,operatingMargin:annualSubtract(value,operating),admin,haul,cost,totalUnit:annualDivide(cost,tons),plantMargin:annualSubtract(value,cost),details:Object.fromEntries(COST_ROWS.map(([,label,key])=>[key,convert(annualNumber(record.lines?.[key]))]))};
+}
+export function annualTotals(records){
+ const values=records.map(annualMetrics),result={};
+ if(!values.length)return annualMetrics({});
+ for(const key of ['tons','meters','operating','admin','haul','value'])result[key]=annualSum(values,key);
+ result.cost=result.operating===null||result.admin===null||result.haul===null?null:result.operating+result.admin+result.haul;
+ result.operatingUnit=annualDivide(result.operating,result.tons);result.totalUnit=annualDivide(result.cost,result.tons);
+ result.operatingMargin=annualSubtract(result.value,result.operating);result.plantMargin=annualSubtract(result.value,result.cost);
+ result.details=Object.fromEntries(COST_ROWS.map(([,label,key])=>[key,values.every(v=>v.details[key]!==null)?values.reduce((sum,v)=>sum+v.details[key],0):null]));return result;
+}
+export const ANNUAL_ROWS=[
+ {key:'tons',label:'Toneladas Producidas',format:annualQuantity,style:'headline'},
+ {key:'operating',label:'Costos Operativos',format:usd,style:'headline',expandable:true},
+ {key:'operatingUnit',label:'Costo Unitario Operativo',format:annualUnit,style:'ratio'},
+ {key:'value',label:'Valor Mineral',format:usd,style:'headline'},
+ {key:'operatingMargin',label:'Margen Operativo',format:usd,style:'headline'},
+ {key:'divider',kind:'divider'},
+ {key:'meters',label:'Metros Desarrollados',format:annualQuantity,style:''},
+ {key:'admin',label:'Costos Administrativos',format:usd,style:''},
+ {key:'haul',label:'Costo Acarreo a Planta',format:usd,style:''},
+ {key:'cost',label:'Costo Total',format:usd,style:'headline'},
+ {key:'totalUnit',label:'Costo Unitario Total',format:annualUnit,style:'ratio'},
+ {key:'plantMargin',label:'Margen Puesto en Planta',format:usd,style:'headline'}
 ];
-const ANNUAL_ROWS=[
- ...ECONOMIC_ROWS,['Costo minero total · MXN',c=>c.total,money,'headline'],['Toneladas a producir',c=>c.tons,fmt,'headline'],['Tope mensual de producción (t)',c=>c.productionLimit,fmt,'limit'],['Metros desarrollados (m)',c=>c.meters,fmt,'headline'],['Costo unitario variable · CUV',c=>c.cuv,money,'ratio'],['Costo unitario total · CUT',c=>c.cut,money,'ratio'],
- ...COST_ROWS.slice(0,15).map(([,label,key])=>[label,c=>c.lines?.[key]??null,money,'']),
- ['Horas extra',c=>c.payroll?.overtime??null,money,''],['Convenio ejidos',c=>c.lines?.ejidos??null,money,''],['Bono extra',c=>c.payroll?.bonus??null,money,''],['Nómina fija',c=>c.fixed,money,'']
-];
+const annualNote='Importes en USD; unitarios en USD/t. Metros: Desarrollo + Preparación. Administrativos: nómina fija. Margen operativo antes de administración y acarreo; margen puesto en planta antes de beneficio y comercialización. Pendiente indica que falta información para valorar.';
 export function annualExcelReport(records){
- const years=[...new Set(records.map(r=>r.month.slice(0,4)))];return years.map(year=>{
-  const rows=records.filter(r=>r.month.startsWith(year)),sum=key=>rows.reduce((a,r)=>a+(Number(r[key])||0),0),tons=sum('tons'),cost=sum('total'),fixed=sum('fixed');
-  return `<section class="annual-report"><h2>Resumen ${year}</h2><p>${monthName(rows[0].month)} a ${monthName(rows.at(-1).month)}</p><div class="annual-scroll"><table class="annual-sheet"><thead><tr><th>Concepto</th>${rows.map(r=>'<th class="num">'+esc(shortMonth(r.month))+'</th>').join('')}<th class="num annual-total">Total ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(([label,get,format,style,key])=>{const value=style==='economic'?economicTotal(rows,key):style==='limit'?null:style==='ratio'?(tons>0?(label.includes('CUV')?cost-fixed:cost)/tons:null):rows.some(r=>get(r)!==null&&get(r)!==undefined)?rows.reduce((a,r)=>a+(Number(get(r))||0),0):null;return `<tr class="${style}"><th>${esc(label)}</th>${rows.map(r=>cell(get(r),format)).join('')}<td class="num annual-total">${format(value)}</td></tr>`}).join('')}</tbody></table></div><p class="report-note">Metros desarrollados = Desarrollo + Preparación. Los costos unitarios del total se calculan sobre las toneladas del periodo. Un tope vacío significa sin límite y no se suma en el total anual. Valores económicos en USD; costos mineros originales en MXN. Margen antes de beneficio y comercialización; valores pendientes no se suman como cero.</p></section>`;
+ const years=[...new Set(records.map(r=>r.month.slice(0,4)))].sort();
+ return years.map(year=>{
+  const rows=records.filter(r=>r.month.startsWith(year)),values=rows.map(annualMetrics),sum=annualTotals(rows),detailsId='annual-operating-'+year;
+  const cellsFor=(get,format)=>values.map(v=>cell(get(v),format)).join('')+`<td class="num annual-total">${format(get(sum))}</td>`;
+  let body='<tbody>';
+  for(const row of ANNUAL_ROWS){
+   if(row.kind==='divider'){body+=`<tr class="annual-divider" aria-hidden="true"><td colspan="${rows.length+2}"></td></tr>`;continue;}
+   const label=row.expandable?`<button type="button" class="annual-cost-toggle" data-annual-cost-toggle="${detailsId}" aria-expanded="false" aria-controls="${detailsId}"><span data-expand-icon aria-hidden="true">▸</span> ${esc(row.label)}</button>`:esc(row.label);
+   body+=`<tr class="${row.style}" data-annual-metric="${row.key}"><th scope="row">${label}</th>${cellsFor(v=>v[row.key],row.format)}</tr>`;
+   if(row.expandable){body+=`</tbody><tbody id="${detailsId}" class="annual-operating-detail" hidden>${COST_ROWS.map(([,label,key])=>`<tr><th scope="row">${esc(label)}</th>${cellsFor(v=>v.details[key],usd)}</tr>`).join('')}</tbody><tbody>`;}
+  }
+  body+='</tbody>';
+  return `<section class="annual-report"><h2>Resumen ${year}</h2><p>${monthName(rows[0].month)} a ${monthName(rows.at(-1).month)} · USD</p><div class="annual-scroll"><table class="annual-sheet"><thead><tr><th>Concepto</th>${rows.map(r=>`<th class="num">${esc(shortMonth(r.month))}</th>`).join('')}<th class="num annual-total">Total ${year}</th></tr></thead>${body}</table></div><p class="report-note">${annualNote}</p></section>`;
  }).join('');
 }
+export function bindAnnualCostDetails(root){
+ root.querySelectorAll('[data-annual-cost-toggle]').forEach(button=>{
+  button.onclick=()=>{const detail=root.querySelector('#'+button.dataset.annualCostToggle);if(!detail)return;detail.hidden=!detail.hidden;button.setAttribute('aria-expanded',String(!detail.hidden));const icon=button.querySelector('[data-expand-icon]');if(icon)icon.textContent=detail.hidden?'▸':'▾';};
+ });
+}
+
 const weekOrdinal=week=>Math.floor((Number(week.slice(8,10))-1)/7)+1;
 const weekTooltip=week=>{const end=new Date(week+'T00:00:00Z');end.setUTCDate(end.getUTCDate()+5);const date=s=>s.slice(8,10)+'/'+s.slice(5,7)+'/'+s.slice(0,4);return 'Semana del '+date(week)+' al '+date(end.toISOString().slice(0,10))};
 const workTypeClass=type=>({'Desarrollo':'work-development','Preparación':'work-preparation','Tumbe':'work-stoping'}[type]||'');
@@ -79,18 +119,21 @@ export function costDetailReport({work,month,quantity,cost}){
 
 export function annualComparisonReport(scenarios){
  const years=[...new Set(scenarios.flatMap(s=>s.records.map(r=>r.month.slice(0,4))))].sort();
- const annualValue=(definition,records)=>{const[label,get,,style,key]=definition;if(style==='limit')return null;if(style==='economic')return economicTotal(records,key);if(style==='ratio'){const tons=records.reduce((sum,r)=>sum+(Number(r.tons)||0),0),cost=records.reduce((sum,r)=>sum+(Number(r.total)||0),0),fixed=records.reduce((sum,r)=>sum+(Number(r.fixed)||0),0);return tons>0?(cost-(label.includes('CUV')?fixed:0))/tons:null}return records.some(r=>get(r)!==null&&get(r)!==undefined)?records.reduce((sum,r)=>sum+(Number(get(r))||0),0):null};
  return years.map(year=>{
   const keys=[...new Set(scenarios.flatMap(s=>s.records.filter(r=>r.month.startsWith(year)).map(r=>r.month)))].sort(),middle=Math.floor(scenarios.length/2);
-  const concepts=`<aside class="concept-panel"><h3 class="scenario-title">Conceptos</h3><div class="concept-scroll" data-compare-scroll><table class="concept-table"><thead><tr><th scope="col">Resumen ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(([label,,,style])=>`<tr class="${style}"><th scope="row" title="${esc(label)}">${esc(label)}</th></tr>`).join('')}</tbody></table></div></aside>`;
+  const concepts=`<aside class="concept-panel"><h3 class="scenario-title">Conceptos</h3><div class="concept-scroll" data-compare-scroll><table class="concept-table"><thead><tr><th scope="col">Resumen ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(row=>row.kind==='divider'?'<tr class="annual-divider" aria-hidden="true"><th></th></tr>':`<tr class="${row.style}" data-annual-metric="${row.key}"><th scope="row" title="${esc(row.label)}">${esc(row.label)}</th></tr>`).join('')}</tbody></table></div></aside>`;
   const panels=scenarios.map((scenario,i)=>{
-   const rows=scenario.records.filter(r=>r.month.startsWith(year));
-   const panel=`<section class="scenario-panel" aria-label="${esc(scenario.name)}"><h3 class="scenario-title" title="${esc(scenario.name)}">${esc(scenario.name)}</h3><div class="scenario-scroll" data-compare-scroll tabindex="0" role="region" aria-label="Meses del escenario ${esc(scenario.name)}"><table class="scenario-table"><thead><tr>${keys.map(key=>`<th class="num" scope="col">${esc(shortMonth(key))}</th>`).join('')}<th class="num annual-total" scope="col">Total ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(definition=>{const[label,get,format,style]=definition;return `<tr class="${style}">${keys.map(key=>{const r=rows.find(r=>r.month===key);return `<td class="num" aria-label="${esc(label)} · ${esc(shortMonth(key))}">${r?format(get(r)):''}</td>`}).join('')}<td class="num annual-total" aria-label="${esc(label)} · Total ${year}">${format(annualValue(definition,rows))}</td></tr>`}).join('')}</tbody></table></div></section>`;
+   const rows=scenario.records.filter(r=>r.month.startsWith(year)),values=new Map(rows.map(r=>[r.month,annualMetrics(r)])),sum=annualTotals(rows);
+   const panel=`<section class="scenario-panel" aria-label="${esc(scenario.name)}"><h3 class="scenario-title" title="${esc(scenario.name)}">${esc(scenario.name)}</h3><div class="scenario-scroll" data-compare-scroll tabindex="0" role="region" aria-label="Meses del escenario ${esc(scenario.name)}"><table class="scenario-table"><thead><tr>${keys.map(key=>`<th class="num" scope="col">${esc(shortMonth(key))}</th>`).join('')}<th class="num annual-total" scope="col">Total ${year}</th></tr></thead><tbody>${ANNUAL_ROWS.map(row=>{
+    if(row.kind==='divider')return `<tr class="annual-divider" aria-hidden="true"><td colspan="${keys.length+1}"></td></tr>`;
+    return `<tr class="${row.style}" data-annual-metric="${row.key}">${keys.map(key=>{const value=values.get(key);return `<td class="num" aria-label="${esc(row.label)} · ${esc(shortMonth(key))}">${value?row.format(value[row.key]):''}</td>`}).join('')}<td class="num annual-total" aria-label="${esc(row.label)} · Total ${year}">${row.format(sum[row.key])}</td></tr>`;
+   }).join('')}</tbody></table></div></section>`;
    return (i===middle?concepts:'')+panel;
   }).join('');
-  return `<section class="annual-report"><h2>Resumen ${year} · comparativa</h2><p>${monthName(keys[0])} a ${monthName(keys.at(-1))}</p><div class="annual-compare-grid" style="--left-panels:${middle};--right-panels:${scenarios.length-middle}">${panels}</div><p class="report-note">Cada escenario tiene su propio desplazamiento horizontal. Los renglones se mantienen alineados al desplazarse verticalmente. Economía en USD; costos originales en MXN. Margen antes de beneficio y comercialización. Pendiente significa que falta valorar producción.</p></section>`;
+  return `<section class="annual-report"><h2>Resumen ${year} · comparativa</h2><p>${monthName(keys[0])} a ${monthName(keys.at(-1))} · USD</p><div class="annual-compare-grid" style="--left-panels:${middle};--right-panels:${scenarios.length-middle}">${panels}</div><p class="report-note">${annualNote}</p></section>`;
  }).join('');
 }
+
 export function bindComparisonScroll(root){
  root._comparisonCleanup?.();const cleanups=[];
  root.querySelectorAll('.annual-compare-grid').forEach(group=>{

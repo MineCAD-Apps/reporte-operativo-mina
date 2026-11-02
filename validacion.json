@@ -1,8 +1,26 @@
 {
-  "calculationsAndBackend": "work/economics-20261102/validation.json",
-  "regression": "work/economics-20261102/validacion.json",
-  "editor": "work/economics-20261102/test-editor.mjs",
-  "liveGoogleSheets": "Catalog and densities seeded and read back; original project A:S, Costos, Equipos and Planes guardados preserved. Prices/widths of vein remain pending.",
+  "ok": true,
+  "rows": [
+    "Toneladas Producidas",
+    "Costos Operativos",
+    "Costo Unitario Operativo",
+    "Valor Mineral",
+    "Margen Operativo",
+    "Metros Desarrollados",
+    "Costos Administrativos",
+    "Costo Acarreo a Planta",
+    "Costo Total",
+    "Costo Unitario Total",
+    "Margen Puesto en Planta"
+  ],
+  "weightedTotals": true,
+  "currencyPerMonth": true,
+  "pendingStrict": true,
+  "expandCollapse": true,
+  "noComparisonDetails": true,
+  "realMonthsReconciled": 12,
+  "noDatabaseChanges": true,
   "published": false,
-  "visualBrowser": "Not completed: local browser execution/connection unavailable; generated report markup and editor simulated DOM validated."
+  "visualBrowser": false,
+  "startupPassed": true
 }
