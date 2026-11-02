@@ -1,4 +1,4 @@
-import {stableStringify,matchesSignature} from './plan-signature.mjs?v=compare-plans-1';
+import {stableStringify,matchesSignature,planSignatureInputs} from './plan-signature.mjs?v=production-1';
 // Discrete mine-wide linear capacity, in complete 1.5 m blast equivalents.
 export const BLAST=1.5;
 const EPS=1e-8;
@@ -71,12 +71,12 @@ export function discreteLevelCapacity(base,input,cal){
    const q=Math.min(BLAST,remaining[w.id]);segments.push({workId:w.id,start:slot.start,end:slot.end,quantity:q,rate:q/(slot.end-slot.start)*6,resourceQuantity:BLAST,blastUnits:1,group:groupOf(w),unit:w.unit});used[w.id]=(used[w.id]||0)+1;remaining[w.id]-=q;usedCapacity+=BLAST;actual+=q;blastCount++;if(remaining[w.id]<=EPS){remaining[w.id]=0;done[w.id]=slot.end;}
   }
   weeklyInfo.push({week:weekKey,available,usable:budget*BLAST,used:usedCapacity,actual,unused:available-usedCapacity,byWork:used});resolveOther();
-  if(!usedCapacity&&week>lastEvent+6){const finiteFuture=linear.some(w=>remaining[w.id]>EPS&&Number.isFinite(readyAt(w.id))&&readyAt(w.id)>=end-EPS);if(!finiteFuture)throw Error('No hay capacidad, ritmo o precedencias disponibles para completar las obras restantes.');}
+  if(!usedCapacity&&week>lastEvent+6){const finiteFuture=linear.some(w=>remaining[w.id]>EPS&&Number.isFinite(readyAt(w.id))&&readyAt(w.id)>week+EPS);if(!finiteFuture)throw Error('No hay capacidad, ritmo o precedencias disponibles para completar las obras restantes.');}
   week=end;
  }
  resolveOther();if(other.some(w=>remaining[w.id]>EPS))throw Error('Hay obras sin ritmo suficiente después de sus precedentes.');
  p.leveledSegments=segments.sort((a,b)=>a.start-b.start||a.workId.localeCompare(b.workId));
  p.capacityAdjustment={version:1,blastSize:BLAST,maxNormal:12,maxRaise:9,blastCount,weeks:weeklyInfo};
- p.levelingAppliedAt=new Date().toISOString();p.levelingSource=stableStringify({rates:p.rates,pauses:p.pauses,works:p.works,capacities:p.capacities,dependencies:base.dependencies});
+ p.levelingAppliedAt=new Date().toISOString();p.levelingSource=stableStringify(planSignatureInputs(base,p));
  delete p.leveledWeekly;return p;
 }

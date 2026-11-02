@@ -1,5 +1,6 @@
-import {stableStringify,matchesSignature} from './plan-signature.mjs?v=compare-plans-1';
-import {discreteLevelCapacity} from './capacity.mjs?v=compare-plans-1';
+import {productionCaps,limitMonthlyProduction} from './production.mjs?v=production-1';
+import {stableStringify,matchesSignature,planSignatureInputs} from './plan-signature.mjs?v=production-1';
+import {discreteLevelCapacity} from './capacity.mjs?v=production-1';
 /** MineCAD planning kernel. UTC dates; continuous six-day work calendar. */
 const MS=86400000,ANCHOR=Date.UTC(2026,9,5)/MS,EPS=1e-8;
 export const day=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))throw Error('Fecha inválida: '+s);const n=Date.parse(s+'T00:00:00Z')/MS;if(!Number.isFinite(n)||new Date(n*MS).toISOString().slice(0,10)!==s)throw Error('Fecha inválida: '+s);return n};
@@ -10,6 +11,7 @@ export const weekAt=t=>iso(ANCHOR+Math.floor((t+EPS)/6)*7);
 export const endDate=t=>dateAt(t-EPS*10);
 const engineClone=x=>JSON.parse(JSON.stringify(x));
 export function validate(base,plan){
+ productionCaps(plan.productionCaps||[]);
  const ids=new Set(),errors=[];try{day(plan.start)}catch(e){errors.push(e.message)}
  for(const w of base.works){if(!w.id||ids.has(w.id))errors.push('ID vacío o duplicado: '+w.id);ids.add(w.id);if(!['m','t'].includes(w.unit))errors.push('Unidad inválida: '+w.id);const p=plan.works[w.id];if(!p||!Number.isFinite(+p.quantity)||+p.quantity<0||+p.quantity>+w.target+EPS)errors.push('Alcance inválido: '+w.id);if(p){try{day(p.earliest)}catch(e){errors.push(e.message)}}}
  for(const d of base.dependencies){if(!ids.has(d.predecessor)||!ids.has(d.successor)||d.predecessor===d.successor)errors.push('Precedencia inválida: '+d.predecessor+' → '+d.successor);if(!['proportional','next-week'].includes(d.mode))errors.push('Regla de precedencia inválida')}
@@ -21,12 +23,13 @@ export function validate(base,plan){
 }
 export function schedule(base,plan){
  const order=validate(base,plan),rows={},warnings=[],segments=[];
- const signature=stableStringify({rates:plan.rates,pauses:plan.pauses,works:plan.works,capacities:plan.capacities,dependencies:base.dependencies});
+ const signature=stableStringify(planSignatureInputs(base,plan));
  if(plan.leveledSegments&&matchesSignature(plan.levelingSource,JSON.parse(signature))){
   for(const w of base.works)rows[w.id]={work:w,start:null,end:null,weekly:{},segments:[],quantity:+plan.works[w.id].quantity,pending:0};
   for(const seg of plan.leveledSegments){const r=rows[seg.workId];r.start??=seg.start;r.end=seg.end;r.segments.push(seg);r.weekly[weekAt(seg.start)]=(r.weekly[weekAt(seg.start)]||0)+seg.quantity;segments.push(seg)}
-  return {start:tick(plan.start),rows,segments,warnings,capacities:plan.capacityAdjustment?.version===1?[]:capacityConflicts(base,plan,segments),capacityAdjustment:plan.capacityAdjustment,end:Math.max(tick(plan.start),...segments.map(s=>s.end))};
+  return {start:tick(plan.start),rows,segments,warnings,capacities:plan.capacityAdjustment?.version===1?[]:capacityConflicts(base,plan,segments),capacityAdjustment:plan.capacityAdjustment,productionAdjustment:plan.productionAdjustment,productionCaps:plan.productionCaps,end:Math.max(tick(plan.start),...segments.map(s=>s.end))};
  }
+ if(plan.autoAdjust)return schedule(base,levelCapacity(base,plan));
  for(const id of order){
   const work=base.works.find(w=>w.id===id),cfg=plan.works[id],rates=plan.rates.filter(r=>r.workId===id).sort((a,b)=>a.week.localeCompare(b.week)),pauses=plan.pauses.filter(p=>p.workId===id).map(p=>({...p,a:tick(p.from),b:tick(p.resume)}));
   const deps=base.dependencies.filter(d=>d.successor===id);let t=Math.max(tick(plan.start),tick(cfg.earliest)),remaining=+cfg.quantity;const result=rows[id]={work,start:null,end:null,weekly:{},segments:[],quantity:remaining,pending:0};
@@ -43,7 +46,7 @@ export function schedule(base,plan){
    result.start??=t;result.end=until;result.segments.push(seg);segments.push(seg);const week=weekAt(t);result.weekly[week]=(result.weekly[week]||0)+quantity;remaining-=quantity;t=until;
   }
  }
- return {start:tick(plan.start),rows,segments,warnings,capacities:capacityConflicts(base,plan,segments),end:Math.max(tick(plan.start),...Object.values(rows).map(r=>r.end??tick(plan.start)))};
+ return {start:tick(plan.start),rows,segments,warnings,capacities:capacityConflicts(base,plan,segments),productionCaps:plan.productionCaps,end:Math.max(tick(plan.start),...Object.values(rows).map(r=>r.end??tick(plan.start)))};
 }
 export function capacityConflicts(base,plan,segments){
  const issues=[];
@@ -55,11 +58,23 @@ export function capacityConflicts(base,plan,segments){
  return issues;
 }
 /** Rebalance whole blasts, preserving scopes, priorities, pauses and dependencies. */
-export function levelCapacity(base,plan){return discreteLevelCapacity(base,plan,{validate,tick,weekAt,dateAt,day});}
+export function levelCapacity(base,plan){
+ const cal={validate,tick,weekAt,dateAt,day},original=engineClone(plan);let calculation=engineClone(plan);
+ for(let pass=0;pass<100;pass++){
+  let adjusted=discreteLevelCapacity(base,calculation,cal);
+  if(original.productionCaps?.length)adjusted=limitMonthlyProduction(base,original,adjusted,cal);else delete adjusted.productionAdjustment;
+  const starts={},ends={};for(const s of adjusted.leveledSegments){starts[s.workId]=Math.min(starts[s.workId]??Infinity,s.start);ends[s.workId]=Math.max(ends[s.workId]??-Infinity,s.end);}
+  let delayed=false;for(const d of base.dependencies){const w=base.works.find(w=>w.id===d.successor);if(w.unit!=='m'||starts[w.id]===undefined||ends[d.predecessor]===undefined)continue;const needed=d.mode==='next-week'?Math.ceil((ends[d.predecessor]-EPS)/6)*6:ends[d.predecessor];if(starts[w.id]<needed-EPS){calculation.works[w.id].earliest=dateAt(Math.ceil(needed-EPS));delayed=true;}}
+  if(delayed)continue;
+  adjusted.works=original.works;adjusted.projectDependencies=engineClone(base.dependencies);adjusted.autoAdjust=true;
+  adjusted.levelingSource=stableStringify(planSignatureInputs(base,adjusted));return adjusted;
+ }
+ throw Error('No se estabilizaron las dependencias entre desarrollo y producción. Revisa la secuencia de las obras.');
+}
 export function monthly(result){
  const out={},blastQuantities={};for(const seg of result.segments){let t=seg.start;while(t<seg.end-EPS){const end=Math.min(seg.end,Math.floor(t+EPS)+1),month=dateAt(t).slice(0,7),quantity=seg.quantity*(end-t)/(seg.end-seg.start);const row=(out[month]??={});row[seg.workId]=(row[seg.workId]||0)+quantity;if(seg.resourceQuantity!==undefined){const used=seg.resourceQuantity*(end-t)/(seg.end-seg.start),b=(blastQuantities[month]??={});b[seg.workId]=(b[seg.workId]||0)+used}t=end}}
- Object.defineProperty(out,'blastQuantities',{value:blastQuantities});
+ Object.defineProperty(out,'blastQuantities',{value:blastQuantities});Object.defineProperty(out,'productionCaps',{value:result.productionCaps||[]});
  Object.defineProperty(out,'bounds',{value:{from:dateAt(result.start??0).slice(0,7),to:endDate(result.end).slice(0,7)}});return out;
 }
-export function setRate(plan,workId,week,rate){day(week);if(!Number.isFinite(+rate)||+rate<0)throw Error('El ritmo debe ser un número no negativo');const p=engineClone(plan);p.rates=p.rates.filter(r=>r.workId!==workId||r.week!==week);p.rates.push({planId:p.id,workId,week,rate:+rate});delete p.leveledWeekly;delete p.levelingSource;delete p.leveledSegments;delete p.capacityAdjustment;return p}
-export function newPlan(plan,name,comments){if(!name.trim())throw Error('Escribe un nombre');const p=engineClone(plan);p.id=globalThis.crypto?.randomUUID?.()||'plan-'+Date.now();p.name=name.trim();p.comments=comments;p.createdAt=p.updatedAt=new Date().toISOString();p.revision=0;let source=null;if(p.levelingSource&&p.leveledSegments){try{const original=JSON.parse(p.levelingSource);const current={rates:p.rates,pauses:p.pauses,works:p.works,capacities:p.capacities,dependencies:p.projectDependencies||original.dependencies};if(matchesSignature(p.levelingSource,current))source=current}catch{}}for(const r of p.rates)r.planId=p.id;if(source){source.rates=p.rates;p.levelingSource=stableStringify(source)}else{for(const k of ['leveledSegments','leveledWeekly','levelingSource','capacityAdjustment'])delete p[k]}return p}
+export function setRate(plan,workId,week,rate){day(week);if(!Number.isFinite(+rate)||+rate<0)throw Error('El ritmo debe ser un número no negativo');const p=engineClone(plan);p.rates=p.rates.filter(r=>r.workId!==workId||r.week!==week);p.rates.push({planId:p.id,workId,week,rate:+rate});delete p.leveledWeekly;delete p.levelingSource;delete p.leveledSegments;delete p.capacityAdjustment;delete p.productionAdjustment;if(plan.autoAdjust||plan.capacityAdjustment?.version===1)p.autoAdjust=true;return p}
+export function newPlan(plan,name,comments){if(!name.trim())throw Error('Escribe un nombre');const p=engineClone(plan);p.id=globalThis.crypto?.randomUUID?.()||'plan-'+Date.now();p.name=name.trim();p.comments=comments;p.createdAt=p.updatedAt=new Date().toISOString();p.revision=0;let source=null;if(p.levelingSource&&p.leveledSegments){try{const original=JSON.parse(p.levelingSource);const current=planSignatureInputs({dependencies:p.projectDependencies||original.dependencies,productionFactors:original.productionFactors},p);if(matchesSignature(p.levelingSource,current))source=current}catch{}}for(const r of p.rates)r.planId=p.id;if(source){source.rates=p.rates;p.levelingSource=stableStringify(source)}else{for(const k of ['leveledSegments','leveledWeekly','levelingSource','capacityAdjustment','productionAdjustment'])delete p[k]}return p}
