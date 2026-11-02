@@ -4,7 +4,7 @@ import {availableYears,yearPeriod} from './year-range.mjs?v=annual-years-1';
 import {openCapacityEditor} from './capacity-editor.mjs?v=capacity-shots-1';
 import {reconcileProject,assignModelRows} from './project-sync.mjs?v=compare-plans-1';
 import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindComparisonScroll,projectExcelGrid,costDetailReport,monthName} from './report-views.mjs?v=economics-1';
-import {PlanningClient} from './api-client.mjs';
+import {PlanningClient} from './api-client.mjs?v=economics-save-2';
 import {planningConfig} from './planning-config.mjs';
 import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs?v=compare-plans-1';
 import {CostModel} from './costs.mjs?v=capacity-shots-1';
