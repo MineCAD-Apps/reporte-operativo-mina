@@ -3,7 +3,7 @@ const col=s=>[...s].reduce((n,c)=>n*26+c.charCodeAt(0)-64,0),letter=n=>{let s=''
 const flat=v=>Array.isArray(v)?v.flat(Infinity):[v];const scalar=v=>Array.isArray(v)?v[0]?.[0]??null:v;const num=v=>{v=scalar(v);if(v===null||v==='')return 0;const n=Number(v);if(!Number.isFinite(n))throw Error('Número inválido: '+v);return n};
 const excelDate=(y,m,d)=>(Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000;
 export class CostModel {
- constructor(model,base,month,quantities){this.model=model;this.base=base;this.month=month;this.memo=new Map;this.stack=new Set;this.overrides={...base.monthlyInputs};this.inputs={};
+ constructor(model,base,month,quantities,blastQuantities={}){this.model=model;this.base=base;this.month=month;this.memo=new Map;this.stack=new Set;this.overrides={...base.monthlyInputs};this.inputs={};
   for(const[name,s]of Object.entries(model.sheets))this.inputs[name]={...s.values,...base.fixed[name]};
   // Route lookups use the current catalog instead of the original eight rows.
   // All route columns share the same row list so MATCH and INDEX stay aligned.
@@ -14,7 +14,7 @@ export class CostModel {
   ).sort((a,b)=>a-b);
   this.inputs.Proyectos={...model.projectValues};for(const w of base.works){const r=w.sourceRow;Object.assign(this.inputs.Proyectos,{['B'+r]:w.id,['C'+r]:w.name,['E'+r]:w.type,['F'+r]:w.material,['G'+r]:w.unit==='m'?w.target:null,['I'+r]:w.unit==='t'?w.target:null,['R'+r]:w.area,['S'+r]:w.section})}
   const counters={Tumbe:6,Desarrollo:60,'Preparación':114};for(const [a,b] of [[6,55],[60,109],[114,163]])for(let r=a;r<=b;r++){this.overrides['CB'+r]='';this.overrides['I'+r]=''}
-  this.workRows={};for(const w of base.works){const q=quantities[w.id]||0;if(q<=1e-9)continue;const r=counters[w.type]++;const limit=w.type==='Tumbe'?55:w.type==='Desarrollo'?109:163;if(r>limit)throw Error('El modelo de costos requiere ampliar su capacidad para '+w.type);this.workRows[w.id]=r;this.overrides['CB'+r]=w.sourceRow-1;this.overrides['I'+r]=q;this.overrides['G'+r]=w.area;this.overrides['H'+r]=w.name;const grades=base.grades.find(g=>g.workId===w.id&&g.month===month)||{};for(const c of 'JKLMN')this.overrides[c+r]=grades[c]??'';}
+  this.workRows={};for(const w of base.works){const q=quantities[w.id]||0;if(q<=1e-9)continue;const r=counters[w.type]++;const limit=w.type==='Tumbe'?55:w.type==='Desarrollo'?109:163;if(r>limit)throw Error('El modelo de costos requiere ampliar su capacidad para '+w.type);this.workRows[w.id]=r;this.overrides['CB'+r]=w.sourceRow-1;this.overrides['I'+r]=q;if(w.unit==='m'&&Object.hasOwn(blastQuantities,w.id))this.overrides['CE'+r]=blastQuantities[w.id]/1.5;this.overrides['G'+r]=w.area;this.overrides['H'+r]=w.name;const grades=base.grades.find(g=>g.workId===w.id&&g.month===month)||{};for(const c of 'JKLMN')this.overrides[c+r]=grades[c]??'';}
   // The original status guard uses the selector. Selection is supplied by this planner.
   this.overrides.E27='OK';const [year,mon]=month.split('-').map(Number);this.monthDate=excelDate(year,mon,1);this.overrides.CB2=this.monthDate;this.overrides.CB3=excelDate(year,mon+1,0);let days=0;for(let d=this.overrides.CB2;d<=this.overrides.CB3;d++)if(new Date((d-excelDate(1970,1,1))*86400000).getUTCDay()!==0)days++;this.overrides.CB4=days;
  }
