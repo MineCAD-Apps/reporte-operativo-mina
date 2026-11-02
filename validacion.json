@@ -1,0 +1,17 @@
+{
+  "ok": true,
+  "passed": 7,
+  "tests": [
+    "Reproduce el error original con la ruta UH-09",
+    "UH-09: MATCH, distancias y equipos alineados",
+    "Las ocho rutas originales conservan exactamente sus resultados",
+    "Una dÃ©cima ruta con un hueco se incorpora sin editar cÃ³digo",
+    "Una distancia cero es vÃ¡lida; las filas auxiliares no son rutas",
+    "No se ocultan Ã¡reas ausentes con un costo cero",
+    "Las 40 obras vigentes calculan costos finitos"
+  ],
+  "sourceReadAt": "2026-11-02T15:14:42.803Z",
+  "verifiedAt": "2026-11-02T15:16:08.767Z",
+  "file": "costs.mjs",
+  "sha256": "fff2537c1eb706d839448ebb910d008b1250f2efef26d16e8a3370b5e754f716"
+}

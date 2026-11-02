@@ -5,6 +5,13 @@ const excelDate=(y,m,d)=>(Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000;
 export class CostModel {
  constructor(model,base,month,quantities){this.model=model;this.base=base;this.month=month;this.memo=new Map;this.stack=new Set;this.overrides={...base.monthlyInputs};this.inputs={};
   for(const[name,s]of Object.entries(model.sheets))this.inputs[name]={...s.values,...base.fixed[name]};
+  // Route lookups use the current catalog instead of the original eight rows.
+  // All route columns share the same row list so MATCH and INDEX stay aligned.
+  const routes=this.inputs['Áreas y obras']||{};
+  this.routeRows=Object.keys(routes).filter(a=>/^A[0-9]+$/.test(a)).map(a=>+a.slice(1)).filter(r=>r>=5&&
+    String(routes['A'+r]??'').trim()&&String(routes['B'+r]??'').trim()&&
+    ['D','E','F'].every(c=>routes[c+r]!==undefined&&routes[c+r]!==null&&routes[c+r]!==''&&Number.isFinite(Number(routes[c+r]))&&Number(routes[c+r])>=0)
+  ).sort((a,b)=>a-b);
   this.inputs.Proyectos={...model.projectValues};for(const w of base.works){const r=w.sourceRow;Object.assign(this.inputs.Proyectos,{['B'+r]:w.id,['C'+r]:w.name,['E'+r]:w.type,['F'+r]:w.material,['G'+r]:w.unit==='m'?w.target:null,['I'+r]:w.unit==='t'?w.target:null,['R'+r]:w.area,['S'+r]:w.section})}
   const counters={Tumbe:6,Desarrollo:60,'Preparación':114};for(const [a,b] of [[6,55],[60,109],[114,163]])for(let r=a;r<=b;r++){this.overrides['CB'+r]='';this.overrides['I'+r]=''}
   this.workRows={};for(const w of base.works){const q=quantities[w.id]||0;if(q<=1e-9)continue;const r=counters[w.type]++;const limit=w.type==='Tumbe'?55:w.type==='Desarrollo'?109:163;if(r>limit)throw Error('El modelo de costos requiere ampliar su capacidad para '+w.type);this.workRows[w.id]=r;this.overrides['CB'+r]=w.sourceRow-1;this.overrides['I'+r]=q;this.overrides['G'+r]=w.area;this.overrides['H'+r]=w.name;const grades=base.grades.find(g=>g.workId===w.id&&g.month===month)||{};for(const c of 'JKLMN')this.overrides[c+r]=grades[c]??'';}
@@ -17,7 +24,11 @@ export class CostModel {
   this.stack.add(key);try{const value=formulas?.[addr]?this.evaluate(formulas[addr],sheet):(values[addr]??null);this.memo.set(key,value);return value}finally{this.stack.delete(key)}
  }
  ref(text,context){let sheet=context,a=text;if(text.includes('!')){const i=text.lastIndexOf('!');sheet=text.slice(0,i).replace(/^'|'$/g,'').replaceAll("''", "'");a=text.slice(i+1)}a=a.replaceAll('$','');
-  if(!/^[A-Z]+\d+(?::[A-Z]+\d+)?$/.test(a))throw Error('Referencia no admitida: '+text);if(!a.includes(':'))return this.cell(sheet,a);const [first,last]=a.split(':'),f=first.match(/([A-Z]+)(\d+)/),l=last.match(/([A-Z]+)(\d+)/),out=[];for(let r=+f[2];r<=+l[2];r++){const row=[];for(let c=col(f[1]);c<=col(l[1]);c++)row.push(this.cell(sheet,letter(c)+r));out.push(row)}return out;
+  if(!/^[A-Z]+\d+(?::[A-Z]+\d+)?$/.test(a))throw Error('Referencia no admitida: '+text);if(!a.includes(':'))return this.cell(sheet,a);
+  const routeRange=sheet==='Áreas y obras'&&a.match(/^([BEFGH])5:([BEFGH])([0-9]+)$/);
+  if(routeRange&&routeRange[1]===routeRange[2]&&+routeRange[3]>=5)
+    return this.routeRows.map(r=>[this.cell(sheet,routeRange[1]+r)]);
+  const [first,last]=a.split(':'),f=first.match(/([A-Z]+)(\d+)/),l=last.match(/([A-Z]+)(\d+)/),out=[];for(let r=+f[2];r<=+l[2];r++){const row=[];for(let c=col(f[1]);c<=col(l[1]);c++)row.push(this.cell(sheet,letter(c)+r));out.push(row)}return out;
  }
  evaluate(n,s){const run=x=>this.evaluate(x,s),cmp=(a,b)=>{a=scalar(a);b=scalar(b);if(a===null)a=typeof b==='string'?'':0;if(b===null)b=typeof a==='string'?'':0;if(typeof a==='string'&&typeof b==='string'){a=a.toLowerCase();b=b.toLowerCase()}return a<b?-1:a>b?1:0};
   if(n[0]==='lit')return n[1];if(n[0]==='error')throw Error(n[1]);if(n[0]==='ref')return this.ref(n[1],s);if(n[0]==='unary')return n[1]==='-'?-num(run(n[2])):num(run(n[2]));
