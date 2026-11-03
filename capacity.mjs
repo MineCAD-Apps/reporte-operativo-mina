@@ -14,7 +14,12 @@ export function isRaise(work){
  return /contra\s*pozo|c\s*\/\s*pozo|c\s*\/\s*p\b/.test(text);
 }
 export const linearWork=w=>w.unit==='m'&&['Desarrollo','Preparación'].includes(w.type);
-export const maxShots=w=>(isRaise(w)?9:15)/BLAST;
+export function normalWeeklyLimit(value=15){
+ const n=Number(value), check=capacitySuggestion(n);
+ if(value===''||!check.valid||n<BLAST)throw Error('El máximo por lugar debe ser un múltiplo positivo de 1.5 m.');
+ return n;
+}
+export const maxShots=(w,normalLimit=15)=>(isRaise(w)?Math.min(9,normalLimit):normalLimit)/BLAST;
 export function distributeShots(items,budget){
  const ordered=[...items].sort((a,b)=>a.priority-b.priority||a.order-b.order);
  const targets=Object.fromEntries(ordered.map(w=>[w.id,Math.min(w.max,Math.max(0,Math.floor(w.requested/BLAST+EPS)))]));
@@ -30,7 +35,7 @@ export function distributeShots(items,budget){
 }
 export function discreteLevelCapacity(base,input,cal){
  const {validate,tick,weekAt,dateAt,day}=cal;const order=validate(base,input),p=clone(input);
- const byId=new Map(base.works.map(w=>[w.id,w]));
+ const normalLimit=normalWeeklyLimit(p.normalWeeklyLimit); const byId=new Map(base.works.map(w=>[w.id,w]));
  const deps=new Map(base.works.map(w=>[w.id,base.dependencies.filter(d=>d.successor===w.id)]));
  const linear=base.works.filter(linearWork),other=base.works.filter(w=>!linearWork(w));
  const caps=(p.capacities||[]).filter(c=>c.unit==='m'&&c.group==='metros').map(c=>({...c,t:tick(c.from)})).sort((a,b)=>a.t-b.t);
@@ -47,7 +52,7 @@ export function discreteLevelCapacity(base,input,cal){
  const rateAt=(id,t)=>rateEventAt(id,t)?.rate||0;
  const shotLimit=(w,t)=>{
   const event=rateEventAt(w.id,t);
-  return event?.manual ? Math.min(maxShots(w),Math.floor(event.rate/BLAST+EPS)) : maxShots(w);
+  return event?.manual ? Math.min(maxShots(w,normalLimit),Math.floor(event.rate/BLAST+EPS)) : maxShots(w,normalLimit);
  };
  const readyAt=id=>{let at=Math.max(tick(p.start),tick(p.works[id].earliest));for(const d of deps.get(id)){if(done[d.predecessor]===undefined)return Infinity;const end=done[d.predecessor];at=Math.max(at,d.mode==='next-week'?Math.ceil((end-EPS)/6)*6:end)}return at};
  const groupOf=w=>p.works[w.id].resourceGroup||w.resourceGroup;
@@ -84,7 +89,7 @@ export function discreteLevelCapacity(base,input,cal){
  }
  resolveOther();if(other.some(w=>remaining[w.id]>EPS))throw Error('Hay obras sin ritmo suficiente después de sus precedentes.');
  p.leveledSegments=segments.sort((a,b)=>a.start-b.start||a.workId.localeCompare(b.workId));
- p.capacityAdjustment={version:1,blastSize:BLAST,maxNormal:15,maxRaise:9,blastCount,weeks:weeklyInfo};
+ p.capacityAdjustment={version:1,blastSize:BLAST,maxNormal:normalLimit,maxRaise:Math.min(9,normalLimit),blastCount,weeks:weeklyInfo};
  p.levelingAppliedAt=new Date().toISOString();p.levelingSource=stableStringify(planSignatureInputs(base,p));
  delete p.leveledWeekly;return p;
 }
