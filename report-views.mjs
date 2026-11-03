@@ -12,7 +12,7 @@ export const COST_ROWS=[
  ['Acero','Brocas','brocas'],['','Barras','barras'],['Explosivo','Alto explosivo','altoExplosivo'],['','Artificios','artificios'],['Diésel','Diésel equipos mina','dieselEquipos'],['','Diésel compresor','dieselCompresor'],['Refacciones','Refacciones scoop','refScoop'],['','Refacciones camión','refCamion'],['','Llantas de equipos mina','llantas'],['','Aceites','aceites'],['Energía','Malacates, compresor y bombeo','energia'],['Servicios mina','Mantenimiento tiro','mttoTiro'],['','Sostenimiento','sostenimiento'],['','Refacciones bombas y perforación','refBombas'],['','Ventilación','ventilacion'],['Nómina variable','Horas extra y bono','nominaVariable'],['Comunidad','Convenio ejidos','ejidos']
 ];
 const total=(works,quantities)=>works.reduce((sum,w)=>sum+(quantities[w.id]||0),0);
-import {RESOURCE_ROWS} from './resources.mjs';
+import {RESOURCE_ROWS} from './resources.mjs?v=crew-1';
 const resourceValue=n=>n==null?'Pendiente':fmt(n,0);
 const resourceRows=r=>RESOURCE_ROWS.map(([key,label])=>`<tr><th scope="row">${esc(label)}</th>${cell(r.requirements[key],resourceValue)}</tr>`).join('');
 export function resourcesDetailReport(r){
@@ -21,7 +21,11 @@ export function resourcesDetailReport(r){
  <h3>Cuadrillas de máquina de pierna</h3><table class="detail-cost-sheet"><tbody>
  ${Object.entries(r.holes).map(([label,n])=>`<tr><th scope="row">Barrenos · ${esc(label)}</th>${cell(n,fmt)}</tr>`).join('')}
  <tr><th scope="row">Barrenos calculados${r.requirements.crews==null?' (parcial)':''}</th>${cell(r.totalHoles,fmt)}</tr>
- <tr><th scope="row">Capacidad por cuadrilla (50 barrenos/día)</th>${cell(r.crewCapacity,resourceValue)}</tr></tbody></table>
+ <tr><th scope="row">Barrenos de contrapozo (incluidos arriba)</th>${cell(r.raiseHoles,fmt)}</tr>
+ <tr><th scope="row">Turnos de barrenación (50 barrenos; contrapozo: ${r.settings.raise})</th>${cell(r.drillingShifts,fmt)}</tr>
+ <tr><th scope="row">Turnos adicionales por desborde (${r.settings.overbreak}%)</th>${cell(r.reserveShifts,v=>v==null?'Sin reserva':fmt(v))}</tr></tbody></table>
+ <h3>Sostenimiento</h3><p>Avance del mes × cobertura × [ancho del cielo + dos tablas desde 1 m de altura]. Los turnos usan superficie terminada; anclas y rollos muestran el consumo previsto por costos, con la merma del catálogo.</p>
+ <table class="detail-cost-sheet"><tbody>${[['Superficie (m²)',r.supportArea],['Anclas previstas',r.bolts],['Rollos previstos',r.rolls],['Rendimiento (m² por turno)',r.settings.support],['Turnos de sostenimiento',r.supportShifts]].map(([label,n])=>`<tr><th scope="row">${label}</th>${cell(n,v=>v==null?'Pendiente':fmt(v))}</tr>`).join('')}</tbody></table>
  <p>Desarrollo y Preparación: disparos equivalentes de 1.5 m × barrenos de la sección. Tumbe: 1 t por barreno pegado, con barra de 6 ft.</p>
  <h3>Horas y unidades por equipo asignado</h3>
  ${fleetRows.length?`<div class="annual-scroll"><table class="detail-cost-sheet"><thead><tr><th>Equipo</th><th>Horas requeridas</th><th>Disponibilidad</th><th>Horas por unidad</th><th>Unidades</th></tr></thead><tbody>${fleetRows.join('')}</tbody></table></div>`:'<p>Sin horas calculadas para mostrar.</p>'}
@@ -168,3 +172,4 @@ export function bindComparisonScroll(root){
  });
  root._comparisonCleanup=()=>{cleanups.forEach(fn=>fn());root._comparisonCleanup=null};
 }
+

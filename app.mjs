@@ -2,14 +2,15 @@ import {limitFor} from './production.mjs?v=production-1';
 import {calculateEconomics} from './economics.mjs?v=economics-1';
 import {openEconomicsEditor} from './economics-editor.mjs?v=economics-1';
 import {availableYears,yearPeriod} from './year-range.mjs?v=annual-years-1';
-import {openCapacityEditor} from './capacity-editor.mjs?v=resources-1';
+import {openCapacityEditor} from './capacity-editor.mjs?v=crew-1';
 import {reconcileProject,assignModelRows} from './project-sync.mjs?v=production-1';
-import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindAnnualCostDetails,bindComparisonScroll,projectExcelGrid,costDetailReport,monthName,resourcesDetailReport} from './report-views.mjs?v=resources-1';
-import {monthlyResources} from './resources.mjs';
+import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindAnnualCostDetails,bindComparisonScroll,projectExcelGrid,costDetailReport,monthName,resourcesDetailReport} from './report-views.mjs?v=crew-1';
+import {monthlyResources} from './resources.mjs?v=crew-1';
+import {isRaise} from './capacity.mjs?v=production-1';
 import {PlanningClient} from './api-client.mjs?v=production-1';
 import {planningConfig} from './planning-config.mjs';
 import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs?v=stope-weekly-1';
-import {CostModel} from './costs.mjs?v=resources-1';
+import {CostModel} from './costs.mjs?v=crew-1';
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),fmt=(n,d=2)=>n===null||n===undefined?'—':Number(n).toLocaleString('es-MX',{maximumFractionDigits:d,minimumFractionDigits:d}),money=n=>n===null||n===undefined?'—':'$'+fmt(n,0),clone=x=>JSON.parse(JSON.stringify(x));
 const STORAGE='minecad.planning.v1',DRAFT='minecad.planning.draft.v1';let base,model,plan,result,months,costCache={},dirty=false,tab='months',reportMonth='',editHandler,proposal,cloud=false,compareMode=document.body.dataset.view==='compare';
 let catalog,currentMine='unificacion';
@@ -51,7 +52,7 @@ function syncYears(){
 function setYear(){if($('#year').value==='custom')return;const p=yearPeriod($('#year').value);$('#from').value=p.from;$('#to').value=p.to}
 function valuedWorks(){return selectedWorks().map(w=>{const a=base.economics?.assignments?.find(a=>a.mineId===currentMine&&a.workId===w.id),z=base.economics?.zones?.find(z=>z.id===a?.zoneId&&z.mineId===currentMine);return {...w,economicZone:z?.name||'',veinWidth:a?.veinWidth,miningWidth:a?.miningWidth}})}
 function renderWeeks(){const{from,to}=period();const begin=day(from+'-01'),end=day(to+'-01'),d=new Date(end*86400000);d.setUTCMonth(d.getUTCMonth()+1);const last=d.getTime()/86400000-1;let t=Math.floor(tick(iso(begin))/6)*6;const weeks=[];for(;day(weekAt(t))<=last;t+=6)weeks.push(weekAt(t));if(weeks.length>1100)throw Error('Reduce el periodo semanal a 20 años o menos');$('#content').innerHTML=projectExcelGrid({works:valuedWorks(),plan,result,weeks,dependencies:base.dependencies,formatStart:dateAt,formatEnd:endDate})}
-function resourcesFor(month){return monthlyResources({month,works:base.works,quantities:months[month]||{},blastQuantities:months.blastQuantities?.[month],details:costs(month).details,availability:plan.fleetAvailability})}
+function resourcesFor(month){return monthlyResources({month,works:base.works,quantities:months[month]||{},blastQuantities:months.blastQuantities?.[month],details:costs(month).details,availability:plan.fleetAvailability,crewInputs:plan.crewInputs,isRaise})}
 function renderMonths(){const keys=monthKeys();if(!keys.includes(reportMonth))reportMonth=keys[0];$('#monthSelect').innerHTML=keys.map(key=>`<option value="${key}">${esc(monthName(key))}</option>`).join('');$('#monthSelect').value=reportMonth;$('#previousMonth').disabled=keys.indexOf(reportMonth)===0;$('#nextMonth').disabled=keys.indexOf(reportMonth)===keys.length-1;$('#content').innerHTML=monthlyExcelReport({month:reportMonth,works:selectedWorks(),quantities:months[reportMonth]||{},cost:costs(reportMonth),grades:base.grades,resources:resourcesFor(reportMonth)})}
 function renderAnnual(){const records=monthKeys().map(month=>({...costs(month),resources:resourcesFor(month),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(months[month]?.[w.id]||0),0)}));$('#content').innerHTML=annualExcelReport(records);bindAnnualCostDetails($('#content'))}
 let compareSelected=new Set;
@@ -100,7 +101,7 @@ if($('#economics'))$('#economics').onclick=()=>{try{
   try{const saved=await server('savePlanningEconomics',payload);catalog.economics=saved;base.economics=saved;costCache={};render();}finally{button.disabled=false;}
  }});
 }catch(e){fail(e)}};
-$('#capacity').onclick=()=>{try{if(!catalog.capabilities?.discreteBlasts)throw Error('Actualiza primero el servicio Apps Script con la versión de capacidad por disparos.');openCapacityEditor({plan,showEditor,onApply:changed,onAvailability:availability=>{plan={...plan,fleetAvailability:availability};dirty=true;localStorage.setItem(DRAFT,JSON.stringify({sourceSHA:base.sourceSHA256,plan}));render()},esc,monthlyEnabled:!!catalog.capabilities?.monthlyProduction})}catch(e){fail(e)}};
+$('#capacity').onclick=()=>{try{if(!catalog.capabilities?.discreteBlasts)throw Error('Actualiza primero el servicio Apps Script con la versión de capacidad por disparos.');openCapacityEditor({plan,showEditor,onApply:changed,onAvailability:(availability,crewInputs)=>{plan={...plan,fleetAvailability:availability,crewInputs};dirty=true;localStorage.setItem(DRAFT,JSON.stringify({sourceSHA:base.sourceSHA256,plan}));render()},esc,monthlyEnabled:!!catalog.capabilities?.monthlyProduction})}catch(e){fail(e)}};
 if($('#resources'))$('#resources').onclick=()=>{try{
  const keys=monthKeys();
  showEditor('Personal y equipos necesarios','CONSULTA MENSUAL','<label>Mes<select id="resourceMonth">'+keys.map(k=>'<option value="'+k+'">'+esc(monthName(k))+'</option>').join('')+'</select></label><div id="resourceBreakdown"></div>',()=>{});

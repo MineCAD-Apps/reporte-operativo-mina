@@ -1,31 +1,15 @@
-MINECAD · Personal y equipos necesarios · 03-nov-2026
+Sube los siete archivos HTML/MJS de este ZIP a la carpeta de Planeación
+en GitHub. Requiere el motor de tumbe semanal ya publicado. No requiere
+cambios en Apps Script ni Sheets. Recarga con Ctrl+F5 al publicar.
 
-Sube a la carpeta de Planeación de GitHub Pages los siete archivos HTML/MJS
-del ZIP. Agrega resources.mjs y sustituye los otros seis. Se presupone
-publicado el parche de tumbe semanal del 02-nov. Conserva su engine.mjs
-y plan.css, y los catálogos y la configuración vigentes. No requiere
-cambiar Apps Script ni Google Sheets. Cuando termine Pages, recarga con Ctrl+F5.
+Capacidad y equipos > Rendimiento de cuadrillas: 12 barrenos/turno en
+contrapozo por defecto; 50 en el resto. Reserva inicial de desborde 2%
+sobre los turnos de barrenación. Captura m² terminados por turno para
+sostenimiento; hasta capturarlos la cifra queda pendiente si hay demanda.
+Pulsa Aplicar y Guardar para conservar los ajustes en el escenario.
 
-Capacidad y equipos: captura disponibilidad de Scoop tram y Camión BP,
-pulsa Aplicar y luego Guardar. Los porcentajes son del escenario y se
-usan en todos sus meses. Puedes dejar un porcentaje pendiente.
-
-Personal y equipos necesarios: consulta de solo lectura por mes para
-todas las obras del escenario, independientemente del filtro de tipo
-o búsqueda. Plan mensual y Resumen anual muestran las tres cantidades
-necesarias; el resumen anual no suma unidades de un mes a otro.
-La comparación no incluye estas filas.
-
-Cuadrillas: 50 barrenos por día de lunes a sábado; Desarrollo y
-Preparación usan 1.5 m por disparo equivalente y los barrenos de
-la sección. Tumbe usa 1 t por barreno pegado con barra de 6 ft.
-Flota: horas por equipo asignado, calculadas por el motor de costos.
-Capacidad por unidad = (días de lunes a sábado - 1 de servicio) ×
-18 horas × disponibilidad. Se redondea por equipo asignado y se suma
-por familia. Un porcentaje de 0% con demanda se marca pendiente y se
-explica en la consulta. Esto estima capacidad requerida, no certifica
-que existan unidades para cubrirla.
-
-Validado localmente con cuatro escenarios de prueba y pruebas de
-sensibilidad, faltantes y meses sin demanda. Publicación y prueba
-en navegador conectado a Google pendientes.
+Sostenimiento usa superficie del motor de costos, sin aplicar merma a
+los m² instalados. Se muestran consumo de anclas y rollos con merma.
+Las cuadrillas de sostenimiento se suman aparte y no cambian los costos
+ni la programación. La comparativa conserva sus filas anteriores.
+Validación local superada; publicación pendiente.
