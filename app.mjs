@@ -1,3 +1,4 @@
+import {printActivePlan} from './plan-print.mjs';
 import {limitFor} from './production.mjs?v=production-1';
 import {calculateEconomics} from './economics.mjs?v=economics-1';
 import {openEconomicsEditor} from './economics-editor.mjs?v=economics-1';
@@ -51,7 +52,7 @@ function syncYears(){
 }
 function setYear(){if($('#year').value==='custom')return;const p=yearPeriod($('#year').value);$('#from').value=p.from;$('#to').value=p.to}
 function valuedWorks(){return selectedWorks().map(w=>{const a=base.economics?.assignments?.find(a=>a.mineId===currentMine&&a.workId===w.id),z=base.economics?.zones?.find(z=>z.id===a?.zoneId&&z.mineId===currentMine);return {...w,economicZone:z?.name||'',veinWidth:a?.veinWidth,miningWidth:a?.miningWidth}})}
-function renderWeeks(){const{from,to}=period();const begin=day(from+'-01'),end=day(to+'-01'),d=new Date(end*86400000);d.setUTCMonth(d.getUTCMonth()+1);const last=d.getTime()/86400000-1;let t=Math.floor(tick(iso(begin))/6)*6;const weeks=[];for(;day(weekAt(t))<=last;t+=6)weeks.push(weekAt(t));if(weeks.length>1100)throw Error('Reduce el periodo semanal a 20 años o menos');$('#content').innerHTML=projectExcelGrid({works:valuedWorks(),plan,result,weeks,dependencies:base.dependencies,formatStart:dateAt,formatEnd:endDate})}
+function visibleWeeks(){const{from,to}=period();const begin=day(from+'-01'),end=day(to+'-01'),d=new Date(end*86400000);d.setUTCMonth(d.getUTCMonth()+1);const last=d.getTime()/86400000-1;let t=Math.floor(tick(iso(begin))/6)*6;const weeks=[];for(;day(weekAt(t))<=last;t+=6)weeks.push(weekAt(t));if(weeks.length>1100)throw Error('Reduce el periodo semanal a 20 años o menos');$('#content').innerHTML=projectExcelGrid({works:valuedWorks(),plan,result,weeks,dependencies:base.dependencies,formatStart:dateAt,formatEnd:endDate})}
 function resourcesFor(month){return monthlyResources({month,works:base.works,quantities:months[month]||{},blastQuantities:months.blastQuantities?.[month],details:costs(month).details,availability:plan.fleetAvailability,crewInputs:plan.crewInputs,isRaise})}
 function renderMonths(){const keys=monthKeys();if(!keys.includes(reportMonth))reportMonth=keys[0];$('#monthSelect').innerHTML=keys.map(key=>`<option value="${key}">${esc(monthName(key))}</option>`).join('');$('#monthSelect').value=reportMonth;$('#previousMonth').disabled=keys.indexOf(reportMonth)===0;$('#nextMonth').disabled=keys.indexOf(reportMonth)===keys.length-1;$('#content').innerHTML=monthlyExcelReport({month:reportMonth,works:selectedWorks(),quantities:months[reportMonth]||{},cost:costs(reportMonth),grades:base.grades,resources:resourcesFor(reportMonth)})}
 function renderAnnual(){const records=monthKeys().map(month=>({...costs(month),resources:resourcesFor(month),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(months[month]?.[w.id]||0),0)}));$('#content').innerHTML=annualExcelReport(records);bindAnnualCostDetails($('#content'))}
@@ -125,3 +126,18 @@ init();
 
 
 
+
+const printButton=$('#printPlan');
+if(printButton)printButton.addEventListener('click',()=>{
+ try{
+  if(!plan||!result||compareMode||!$('#error').hidden)return;
+  const {from,to}=period();
+  printActivePlan({
+   name:plan.name,mine:$('#mineName').textContent,dirty,tab,
+   period:tab==='months'?monthName(reportMonth):monthName(from)+' – '+monthName(to),
+   type:$('#type').value,search:$('#search').value,
+   source:$('#content'),works:tab==='weeks'?selectedWorks():[],
+   weeks:tab==='weeks'?visibleWeeks():[],result
+  });
+ }catch(e){fail(e)}
+});

@@ -1,0 +1,22 @@
+@page { size: A4 landscape; margin: 11mm; }
+body.printing-plan { display: block !important; margin: 0 !important; min-width: 0 !important; background: white !important; }
+body.printing-plan > :not(#minecad-print) { display: none !important; }
+#minecad-print { display: block !important; font: 10pt system-ui, sans-serif; color: #132b43; print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+#minecad-print h1 { margin: 0 0 3mm; font-size: 20pt; }
+#minecad-print h2, #minecad-print h3 { break-after: avoid; }
+#minecad-print :is(.table-wrap,.annual-scroll,.monthly-block-scroll,.economic-scroll,.report-canvas,.annual-canvas) {
+ overflow: visible !important; min-width: 0 !important; max-height: none !important; max-width: none !important;
+}
+#minecad-print .excel-month-layout { display: block !important; }
+#minecad-print :is(.monthly-costs,.monthly-works,.annual-report,.monthly-report) { width: auto !important; min-width: 0 !important; max-width: none !important; }
+#minecad-print table { border-collapse: collapse; width: 100% !important; min-width: 0 !important; margin: 0 0 4mm; font-size: 8pt; table-layout: auto; }
+#minecad-print thead { display: table-header-group; }
+#minecad-print tr { break-inside: avoid; }
+#minecad-print :is(th,td) { position: static !important; padding: 2mm !important; border: 1px solid #d5e0e9; min-width: 0 !important; width: auto !important; white-space: normal !important; }
+#minecad-print th { background: #eaf1f7; text-align: left; }
+#minecad-print button { border: 0; color: inherit; background: transparent; padding: 0; font: inherit; }
+#minecad-print small { display: block; font-weight: normal; }
+#minecad-print .print-week-block + .print-week-block { break-before: page; }
+#minecad-print .print-active { background: #d8e8f8; font-weight: 700; }
+#minecad-print [data-type="Preparación"] { background: #f5e8c7; }
+#minecad-print [data-type="Tumbe"] { background: #d7eee5; }
