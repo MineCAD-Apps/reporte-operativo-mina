@@ -12,7 +12,24 @@ export const COST_ROWS=[
  ['Acero','Brocas','brocas'],['','Barras','barras'],['Explosivo','Alto explosivo','altoExplosivo'],['','Artificios','artificios'],['Diésel','Diésel equipos mina','dieselEquipos'],['','Diésel compresor','dieselCompresor'],['Refacciones','Refacciones scoop','refScoop'],['','Refacciones camión','refCamion'],['','Llantas de equipos mina','llantas'],['','Aceites','aceites'],['Energía','Malacates, compresor y bombeo','energia'],['Servicios mina','Mantenimiento tiro','mttoTiro'],['','Sostenimiento','sostenimiento'],['','Refacciones bombas y perforación','refBombas'],['','Ventilación','ventilacion'],['Nómina variable','Horas extra y bono','nominaVariable'],['Comunidad','Convenio ejidos','ejidos']
 ];
 const total=(works,quantities)=>works.reduce((sum,w)=>sum+(quantities[w.id]||0),0);
-export function monthlyExcelReport({month,works,quantities,cost,grades=[]}){
+import {RESOURCE_ROWS} from './resources.mjs';
+const resourceValue=n=>n==null?'Pendiente':fmt(n,0);
+const resourceRows=r=>RESOURCE_ROWS.map(([key,label])=>`<tr><th scope="row">${esc(label)}</th>${cell(r.requirements[key],resourceValue)}</tr>`).join('');
+export function resourcesDetailReport(r){
+ const fleetRows=r.fleets.flatMap(f=>f.rows.map(g=>`<tr><th scope="row">${esc(f.label)} · ${esc(g.equipment)}</th>${cell(g.hours,fmt)}<td class="num">${f.percent==null?'Pendiente':fmt(f.percent)+'%'}</td>${cell(f.hoursPerUnit,fmt)}${cell(g.required,resourceValue)}</tr>`));
+ return `<p>${r.workdays} días de lunes a sábado. Equipos: 18 h por día (7 + 6 + 5), menos un día de servicio = <strong>${r.baseHours} h por unidad al 100%</strong>.</p>
+ <h3>Cuadrillas de máquina de pierna</h3><table class="detail-cost-sheet"><tbody>
+ ${Object.entries(r.holes).map(([label,n])=>`<tr><th scope="row">Barrenos · ${esc(label)}</th>${cell(n,fmt)}</tr>`).join('')}
+ <tr><th scope="row">Barrenos calculados${r.requirements.crews==null?' (parcial)':''}</th>${cell(r.totalHoles,fmt)}</tr>
+ <tr><th scope="row">Capacidad por cuadrilla (50 barrenos/día)</th>${cell(r.crewCapacity,resourceValue)}</tr></tbody></table>
+ <p>Desarrollo y Preparación: disparos equivalentes de 1.5 m × barrenos de la sección. Tumbe: 1 t por barreno pegado, con barra de 6 ft.</p>
+ <h3>Horas y unidades por equipo asignado</h3>
+ ${fleetRows.length?`<div class="annual-scroll"><table class="detail-cost-sheet"><thead><tr><th>Equipo</th><th>Horas requeridas</th><th>Disponibilidad</th><th>Horas por unidad</th><th>Unidades</th></tr></thead><tbody>${fleetRows.join('')}</tbody></table></div>`:'<p>Sin horas calculadas para mostrar.</p>'}
+ <p>Las horas incluyen viaje cargado, regreso vacío y maniobras. Cada equipo asignado se dimensiona por separado; las fracciones se redondean hacia arriba.</p>
+ <h3>Recursos necesarios en el mes</h3><table class="detail-cost-sheet"><tbody>${resourceRows(r)}</tbody></table>
+ ${r.issues.length?`<ul>${r.issues.map(issue=>'<li>'+esc(issue)+'</li>').join('')}</ul>`:''}`;
+}
+export function monthlyExcelReport({month,works,quantities,cost,grades=[],resources}){
  const title=monthName(month),lines=cost.lines||{},pay=cost.payroll||{};
  const left=`<aside class="monthly-costs"><h3 class="excel-caption">Costos del mes · todas las obras</h3><table class="cost-sheet"><thead><tr><th>Concepto</th><th>Detalle</th><th class="num">MXN</th></tr></thead><tbody>${COST_ROWS.map(([group,label,key])=>`<tr><td class="cost-group">${esc(group)}</td><td>${esc(label)}</td>${cell(lines[key])}</tr>`).join('')}</tbody></table>
  <table class="month-kpis"><tbody><tr class="grand-total"><th>Costo total</th>${cell(cost.total)}</tr><tr><th>Toneladas a producir</th>${cell(cost.tons,fmt)}</tr><tr><th>Tope de producción del mes</th><td class="num">${cost.productionLimit==null?'Sin límite':fmt(cost.productionLimit)+' t'}</td></tr><tr><th>Costo unitario variable · CUV</th>${cell(cost.cuv)}</tr><tr><th>Costo unitario total · CUT</th>${cell(cost.cut)}</tr></tbody></table>
@@ -26,7 +43,7 @@ export function monthlyExcelReport({month,works,quantities,cost,grades=[]}){
   }
   return `<section class="monthly-block" data-work-type="${esc(type)}"><h3>${esc(type)}</h3><div class="monthly-block-scroll"><table class="monthly-work-sheet"><colgroup><col class="area-col"><col class="place-col"><col class="quantity-col">${'<col class="grade-col">'.repeat(5)}<col class="unit-cost-col"></colgroup><thead><tr><th>Área</th><th>Lugar</th><th class="num">${unit}</th>${['Au','Ag','Pb','Cu','Zn'].map(x=>'<th class="num">'+x+'</th>').join('')}<th class="num">Costo directo<br>${type==='Tumbe'?'$/t':'$/m'}</th></tr></thead><tbody>${rows.length?rows.join(''):'<tr><td colspan="9" class="empty-section">Sin obras programadas en este mes.</td></tr>'}</tbody><tfoot><tr><th colspan="2">Total ${esc(type.toLowerCase())}</th>${cell(total(active,quantities),fmt)}<td colspan="6"></td></tr></tfoot></table></div></section>`;
  }).join('');
- return `<article class="monthly-report"><div class="report-title"><h2>Plan mensual · ${esc(title)}</h2><span>Unificación · MXN</span></div><div class="excel-month-layout">${left}<div class="monthly-works">${sections}${economicsDetails(cost.economics)}</div></div></article>`;
+ return `<article class="monthly-report"><div class="report-title"><h2>Plan mensual · ${esc(title)}</h2><span>Unificación · MXN</span></div><div class="excel-month-layout">${left}<div class="monthly-works">${sections}${economicsDetails(cost.economics)}</div></div>${resources?`<section><h3>Personal y equipos · todas las obras del mes</h3><table class="month-kpis"><tbody>${resourceRows(resources)}</tbody></table></section>`:''}</article>`;
 }
 export function economicsSummary(e){
  if(!e)return '';
@@ -85,6 +102,12 @@ export function annualExcelReport(records){
    const label=row.expandable?`<button type="button" class="annual-cost-toggle" data-annual-cost-toggle="${detailsId}" aria-expanded="false" aria-controls="${detailsId}"><span data-expand-icon aria-hidden="true">▸</span> ${esc(row.label)}</button>`:esc(row.label);
    body+=`<tr class="${row.style}" data-annual-metric="${row.key}"><th scope="row">${label}</th>${cellsFor(v=>v[row.key],row.format)}</tr>`;
    if(row.expandable){body+=`</tbody><tbody id="${detailsId}" class="annual-operating-detail" hidden>${COST_ROWS.map(([,label,key])=>`<tr><th scope="row">${esc(label)}</th>${cellsFor(v=>v.details[key],usd)}</tr>`).join('')}</tbody><tbody>`;}
+  }
+  if(rows.some(r=>r.resources)){
+   body+=`<tr class="annual-divider" aria-hidden="true"><td colspan="${rows.length+2}"></td></tr>`;
+   for(const [key,label] of RESOURCE_ROWS){
+    body+=`<tr><th scope="row">${esc(label)}</th>${rows.map(r=>cell(r.resources?.requirements[key],resourceValue)).join('')}<td class="num annual-total">—</td></tr>`;
+   }
   }
   body+='</tbody>';
   return `<section class="annual-report"><h2>Resumen ${year}</h2><p>${monthName(rows[0].month)} a ${monthName(rows.at(-1).month)} · USD</p><div class="annual-scroll"><table class="annual-sheet"><thead><tr><th>Concepto</th>${rows.map(r=>`<th class="num">${esc(shortMonth(r.month))}</th>`).join('')}<th class="num annual-total">Total ${year}</th></tr></thead>${body}</table></div><p class="report-note">${annualNote}</p></section>`;
