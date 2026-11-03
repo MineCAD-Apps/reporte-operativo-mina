@@ -1,31 +1,9 @@
 {
-  "ok": true,
-  "fixture": [
-    600,
-    600,
-    300
-  ],
-  "plans": [
-    {
-      "name": "Plan inicial · configuración nueva",
-      "priorOver": 0,
-      "newOver": 0,
-      "largest": null,
-      "monthlyAndSegmentsUnchanged": true
-    },
-    {
-      "name": "Plan inicial 34.5 metros semanales",
-      "priorOver": 35,
-      "newOver": 0,
-      "largest": {
-        "workId": "Reb-1750-P",
-        "week": "2027-08-30",
-        "before": 2500,
-        "after": 501.718620362688,
-        "max": 600
-      },
-      "monthlyAndSegmentsUnchanged": true
-    }
-  ],
-  "databaseChanged": false
+  "documentsInAuthenticatedRead": 5,
+  "readOnly": true,
+  "actualDocsTested": true,
+  "frontendMockTest": true,
+  "reconnectTest": true,
+  "syntaxChecked": true,
+  "livePublishedVerified": false
 }

@@ -268,6 +268,7 @@
         text-align: right;
       }
     }
+    .planos-connection{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:16px;font-size:13px;color:var(--muted)}.planos-connection button{border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:white;color:var(--text);font-weight:700;cursor:pointer}.error[hidden]{display:none!important}
   </style>
 </head>
 <body>
@@ -324,7 +325,8 @@
     </section>
   </main>
 
-  <script>
+  <script type="module">
+    import {PlanningClient} from "./planos-client.mjs?v=planos-auth-1";
     const API_URL =
       "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
 
@@ -497,52 +499,41 @@
       });
     });
 
+    let planosClient=null,loadGeneration=0;
+    const connection=document.createElement('div');
+    connection.className='planos-connection';
+    connection.innerHTML='<span>Conexión privada con Google</span><button type="button" id="authorizePlanos">Autorizar Google</button><button type="button" id="reconnectPlanos">Reconectar</button>';
+    document.querySelector('main').prepend(connection);
+    const catalogError=document.createElement('div');catalogError.className='error';catalogError.hidden=true;
+    connection.after(catalogError);
+    function client(){return planosClient||(planosClient=new PlanningClient({apiUrl:API_URL,parentOrigin:'https://minecad-apps.github.io',timeoutMs:90000}))}
+    document.getElementById('authorizePlanos').addEventListener('click',()=>window.open(client().authorizationUrl(),'_blank','noopener'));
+    document.getElementById('reconnectPlanos').addEventListener('click',()=>{planosClient?.dispose();planosClient=null;init()});
     async function init() {
+      const generation=++loadGeneration;catalogError.hidden=true;mineButtons.forEach(b=>b.disabled=true);
+      selectedMineText.textContent='Cargando catálogo de planos…';
       try {
-        selectedMineText.textContent = "Cargando catálogo de planos…";
-
-        const response = await fetch(
-          `${API_URL}?accion=documentos`,
-          { cache: "no-store" }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (!result.ok) {
-          throw new Error(result.mensaje || "La API devolvió un error.");
-        }
-
-        documents = Array.isArray(result.datos) ? result.datos : [];
-        selectedMineText.textContent =
-          "Selecciona una mina para visualizar sus archivos.";
-
-        const params = new URLSearchParams(window.location.search);
-        const mineParam = params.get("mina");
-
-        const matchingButton = mineButtons.find(button =>
-          normalizeText(button.dataset.mine) === normalizeText(mineParam)
-        );
-
-        if (matchingButton) {
-          selectMine(matchingButton.dataset.mine);
-        }
-
-      } catch (error) {
-        console.error(error);
-
-        const errorBox = document.createElement("div");
-        errorBox.className = "error";
-        errorBox.textContent =
-          "No fue posible cargar el catálogo de planos desde Google Sheets.";
-        document.querySelector("main").prepend(errorBox);
-
-        selectedMineText.textContent =
-          "El catálogo no está disponible en este momento.";
-      }
+        const id=crypto.randomUUID();
+        const responses=await client().call('loadOperationalQueries',[{id,action:'documentos',params:{}}]);
+        if(generation!==loadGeneration)return;
+        const reply=Array.isArray(responses)?responses.find(r=>r.id===id):null;
+        if(!reply?.ok)throw Error(reply?.error||'No se recibió respuesta del catálogo de planos.');
+        const result=reply.result;
+        if(!result?.ok)throw Error(result?.mensaje||'La consulta de DOCUMENTOS fue rechazada.');
+        if(!Array.isArray(result.datos))throw Error('El catálogo de DOCUMENTOS tiene un formato inesperado.');
+        documents=result.datos;
+        selectedMineText.textContent=documents.length?'Selecciona una mina para visualizar sus archivos.':'El catálogo se consultó correctamente, pero no tiene documentos vigentes.';
+        const mineParam=selectedMine||new URLSearchParams(window.location.search).get('mina');
+        const matchingButton=mineButtons.find(b=>normalizeText(b.dataset.mine)===normalizeText(mineParam));
+        if(matchingButton)selectMine(matchingButton.dataset.mine);
+      } catch(error) {
+        if(generation!==loadGeneration)return;
+        let detail=String(error.message||error);
+        if(detail.includes('Consulta de reporte no admitida'))detail='El servicio aún no incluye el catálogo de Planos. Sustituye Código.gs con el de este paquete y publica una nueva versión de la misma implementación.';
+        catalogError.textContent='No fue posible cargar el catálogo de planos desde Google Sheets. '+detail;
+        catalogError.hidden=false;
+        selectedMineText.textContent='Catálogo no actualizado. Autoriza Google si lo solicita y pulsa Reconectar.';
+      } finally {if(generation===loadGeneration)mineButtons.forEach(b=>b.disabled=false)}
     }
 
     init();
