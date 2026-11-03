@@ -21,7 +21,10 @@ export function distributeShots(items,budget){
  let used=Object.values(targets).reduce((a,b)=>a+b,0);
  // One increment/decrement per work per round; priorities decide each round's order.
  const adjust=(list,direction)=>{let changed=false;for(const w of list){if(used===budget)break;const q=targets[w.id];if(direction>0?q<w.max:q>0){targets[w.id]+=direction;used+=direction;changed=true}}return changed};
- while(used>budget&&adjust([...ordered].sort((a,b)=>b.priority-a.priority||a.order-b.order),-1)){}
+ const reductionOrder=[...ordered].sort((a,b)=>b.priority-a.priority||a.order-b.order);
+ const automatic=reductionOrder.filter(w=>!w.manual),manual=reductionOrder.filter(w=>w.manual);
+ while(used>budget&&adjust(automatic,-1)){}
+ while(used>budget&&adjust(manual,-1)){}
  while(used<budget&&adjust(ordered,1)){}
  return targets;
 }
@@ -40,7 +43,12 @@ export function discreteLevelCapacity(base,input,cal){
  for(const [id,q]of Object.entries(remaining))if(q<=EPS)done[id]=tick(p.start);
  const rates=new Map(base.works.map(w=>[w.id,p.rates.filter(r=>r.workId===w.id).map(r=>({...r,t:tick(r.week)})).sort((a,b)=>a.t-b.t)]));
  const pauses=new Map(base.works.map(w=>[w.id,p.pauses.filter(x=>x.workId===w.id).map(x=>({a:tick(x.from),b:tick(x.resume)}))]));
- const rateAt=(id,t)=>rates.get(id).filter(r=>r.t<=t+EPS).at(-1)?.rate||0;
+ const rateEventAt=(id,t)=>rates.get(id).filter(r=>r.t<=t+EPS).at(-1);
+ const rateAt=(id,t)=>rateEventAt(id,t)?.rate||0;
+ const shotLimit=(w,t)=>{
+  const event=rateEventAt(w.id,t);
+  return event?.manual ? Math.min(maxShots(w),Math.floor(event.rate/BLAST+EPS)) : maxShots(w);
+ };
  const readyAt=id=>{let at=Math.max(tick(p.start),tick(p.works[id].earliest));for(const d of deps.get(id)){if(done[d.predecessor]===undefined)return Infinity;const end=done[d.predecessor];at=Math.max(at,d.mode==='next-week'?Math.ceil((end-EPS)/6)*6:end)}return at};
  const groupOf=w=>p.works[w.id].resourceGroup||w.resourceGroup;
  // Tumbe keeps its own dated rates; it follows the newly computed predecessors.
@@ -61,13 +69,13 @@ export function discreteLevelCapacity(base,input,cal){
   for(let i=0;i<budget;i++)slots.push({start:cursorFor(i*BLAST),end:cursorFor((i+1)*BLAST)});
   const used={},lastId={baseline:null,extra:null};
   const candidates=linear.filter(w=>remaining[w.id]>EPS&&tick(p.works[w.id].earliest)<end-EPS&&rateAt(w.id,week)>EPS&&!pauses.get(w.id).some(x=>x.a<=week+EPS&&x.b>=end-EPS));
-  const targets=distributeShots(candidates.map((w,i)=>({id:w.id,priority:+p.works[w.id].priority||1,order:i,max:Math.min(maxShots(w),Math.ceil((remaining[w.id]-EPS)/BLAST)),requested:rateAt(w.id,week)})),budget);
+  const targets=distributeShots(candidates.map((w,i)=>({id:w.id,priority:+p.works[w.id].priority||1,order:i,manual:rateEventAt(w.id,week)?.manual,max:Math.min(shotLimit(w,week),Math.ceil((remaining[w.id]-EPS)/BLAST)),requested:rateAt(w.id,week)})),budget);
   const sorted=[...candidates].sort((a,b)=>(+p.works[a.id].priority||1)-(+p.works[b.id].priority||1)||base.works.indexOf(a)-base.works.indexOf(b));
   // Cursor remains across shots, so one work cannot take several extras before peers.
   const pick=(eligible,kind)=>{if(!eligible.length)return null;const last=lastId[kind],index=sorted.findIndex(w=>w.id===last);for(let offset=1;offset<=sorted.length;offset++){const w=sorted[(index+offset)%sorted.length];if(eligible.includes(w)){lastId[kind]=w.id;return w}}return eligible[0]};
   let usedCapacity=0,actual=0;
-  for(const slot of slots){resolveOther();const eligible=sorted.filter(w=>remaining[w.id]>EPS&&(used[w.id]||0)<maxShots(w)&&readyAt(w.id)<=slot.start+EPS&&!pauses.get(w.id).some(x=>x.a<slot.end-EPS&&x.b>slot.start+EPS));
-   const owed=eligible.filter(w=>(used[w.id]||0)<(targets[w.id]||0));const w=pick(owed,'baseline')||pick(eligible,'extra');if(!w)continue;
+  for(const slot of slots){resolveOther();const eligible=sorted.filter(w=>remaining[w.id]>EPS&&(used[w.id]||0)<shotLimit(w,week)&&readyAt(w.id)<=slot.start+EPS&&!pauses.get(w.id).some(x=>x.a<slot.end-EPS&&x.b>slot.start+EPS));
+   const owed=eligible.filter(w=>(used[w.id]||0)<(targets[w.id]||0));const w=pick(owed.filter(w=>rateEventAt(w.id,week)?.manual),'baseline')||pick(owed,'baseline')||pick(eligible,'extra');if(!w)continue;
    const q=Math.min(BLAST,remaining[w.id]);segments.push({workId:w.id,start:slot.start,end:slot.end,quantity:q,rate:q/(slot.end-slot.start)*6,resourceQuantity:BLAST,blastUnits:1,group:groupOf(w),unit:w.unit});used[w.id]=(used[w.id]||0)+1;remaining[w.id]-=q;usedCapacity+=BLAST;actual+=q;blastCount++;if(remaining[w.id]<=EPS){remaining[w.id]=0;done[w.id]=slot.end;}
   }
   weeklyInfo.push({week:weekKey,available,usable:budget*BLAST,used:usedCapacity,actual,unused:available-usedCapacity,byWork:used});resolveOther();

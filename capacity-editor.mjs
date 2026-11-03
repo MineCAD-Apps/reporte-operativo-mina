@@ -1,4 +1,4 @@
-import {capacitySuggestion} from './capacity.mjs?v=cap15-1';
+import {capacitySuggestion} from './capacity.mjs?v=manual-1';
 import {productionCaps} from './production.mjs?v=production-1';
 import {FLEETS,fleetAvailability,CREW_INPUTS,crewSettings} from './resources.mjs?v=crew-1';
 export function capacityEvents(rows,start){
