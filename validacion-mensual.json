@@ -1,0 +1,15 @@
+{
+  "pdf": "C:\\Users\\opera\\Documents\\Codex\\2026-10-16\\vamo\\outputs\\MINECAD-reportes-20261102\\MINECAD-reporte-mensual-2026-10.pdf",
+  "sha256": "2eff093426180ef908d2ee0329feae3278e7c6fcd55707dbfef334339ce49a65",
+  "pages": 6,
+  "coverage": {
+    "UH": 31,
+    "SM": 31
+  },
+  "plantTonnes": 295.89,
+  "cuellesUH": 114.1,
+  "cuellesSM": 80.1,
+  "monthEndTopographyMissing": true,
+  "termitaDifference": 6,
+  "emailSent": false
+}

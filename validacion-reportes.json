@@ -1,0 +1,27 @@
+{
+  "octoberCoverage": "62/62",
+  "octoberPlant": 295.89,
+  "octoberCuelles": 194.2,
+  "noNovemberPlanCopied": true,
+  "modeSwitch": true,
+  "connectionFailureDoesNotBecomeZero": true,
+  "readBatchCalls": 6,
+  "liveBrowserVerified": false,
+  "backendReadOnly": true,
+  "unauthorizedAccountRejected": true,
+  "arbitraryMethodsRejected": true,
+  "existingPlanningFunctionsPreserved": true,
+  "pdfVisuallyReviewed": true,
+  "publicationPending": true,
+  "files": {
+    "LEEME.md": "cbd82f0bda2d68c1d12ed321f6bbec1fb0e2e59ff66ba4ce02d1699a65517b66",
+    "MINECAD-reporte-mensual-2026-10.pdf": "2eff093426180ef908d2ee0329feae3278e7c6fcd55707dbfef334339ce49a65",
+    "reportes-client.mjs": "b017a5e6e2ee5ecb63fdf77897d842cc428c3378caac0f4dc6c249df7a565983",
+    "reportes.css": "e7eda8709a77a13f6458cee5bcad00b37ba6b2ac6d37ad3e862a2725e654f613",
+    "reportes.html": "f216ad15124f3a1f768903f17e3b040305886a3044e27094bc4957c9b3db81a1",
+    "reportes.js": "0c1c1287675ce57d597bedd1808fbc79a748f119368eb55006790123fd01039f",
+    "validacion-mensual.json": "c1df3e9d6555cc5bda82d3ae58caebcb559dec64b8b2d11026575fc289610ea2",
+    "apps-script/Bridge.html": "208a6ca8899c65a4fd0887f1ba8505ee4c8c669db645e34beb7009898ca56d8b",
+    "apps-script/Código.gs": "5189fa5f47856dfc8c986ada7088d3c774a680d60907a591c4b485e33a36f23f"
+  }
+}

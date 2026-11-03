@@ -66,3 +66,7 @@ h2,h3,p{margin-top:0}.topbar h1{font-size:1.45rem}.report-heading{display:flex;a
   .monthly-mine-card,
   .monthly-operation-card { break-inside:avoid; box-shadow:none; }
 }
+
+.report-auth-controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:16px;font-size:.8rem}.report-auth-controls button{padding:7px 12px;border:1px solid #bdcedc;border-radius:8px;background:white;color:#174e80;cursor:pointer}.monthly-scroll{overflow:auto}.monthly-table{width:100%;border-collapse:collapse;font-size:.78rem}.monthly-table th,.monthly-table td{text-align:left;padding:8px;border-bottom:1px solid #dce4ee}.monthly-table th{background:#eef3f8}.monthly-table td.num{text-align:right}.monthly-note{font-size:.78rem;line-height:1.5;color:#60758a}.monthly-event{padding:8px 0;border-bottom:1px solid #e8edf3}.monthly-operation-card h3{color:#174e80}.monthly-partial{background:#fff0bf;padding:10px;border-radius:8px}@media print{.report-auth-controls{display:none}}
+
+.report-view[hidden]{display:none!important}@media print{.report-controls,.report-mode-nav{display:none!important}.monthly-scroll{overflow:visible}.monthly-table{font-size:8pt}.monthly-operation-card{break-inside:auto!important}}
