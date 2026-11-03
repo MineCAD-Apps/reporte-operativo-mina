@@ -1,7 +1,5 @@
+Actualiza Código.gs en la implementación actual de Apps Script y publica una nueva versión.
 Sube los nueve archivos HTML/MJS a la carpeta de Planeación de GitHub Pages.
-Si todavía no publicaste el cambio a 15 m, actualiza Código.gs en la implementación
-actual de Apps Script con el archivo incluido. Recarga MineCAD tras publicar.
-
-Vuelve a aplicar un ritmo manual previamente capturado para marcarlo como manual.
-El ritmo rige desde esa semana hasta el próximo evento. El autoajuste le da
-prioridad y lo usa como límite. Usa múltiplos de 1.5 m para obras lineales.
+En Capacidad y equipos, conserva el ritmo inicial o edítalo y usa Agregar cambio de tope.
+Selecciona lunes posteriores al inicio y topes en múltiplos positivos de 1.5 m.
+Aplica para recalcular y guarda para conservar el historial con el escenario.

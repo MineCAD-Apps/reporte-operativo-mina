@@ -19,6 +19,17 @@ export function normalWeeklyLimit(value=15){
  if(value===''||!check.valid||n<BLAST)throw Error('El máximo por lugar debe ser un múltiplo positivo de 1.5 m.');
  return n;
 }
+export function weeklyLimitEvents(events=[],start){
+ if(!Array.isArray(events))throw Error('Historial de topes inválido.');
+ const dates=new Set();
+ return events.map(({from,limit})=>{
+  const date=new Date(from+'T00:00:00Z');
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(from)||!Number.isFinite(+date)||date.toISOString().slice(0,10)!==from||date.getUTCDay()!==1||from<=start||dates.has(from))
+   throw Error('Cada cambio de tope debe tener un lunes distinto, posterior al inicio del escenario.');
+  dates.add(from);
+  return {from,limit:normalWeeklyLimit(limit)};
+ }).sort((a,b)=>a.from.localeCompare(b.from));
+}
 export const maxShots=(w,normalLimit=15)=>(isRaise(w)?Math.min(9,normalLimit):normalLimit)/BLAST;
 export function distributeShots(items,budget){
  const ordered=[...items].sort((a,b)=>a.priority-b.priority||a.order-b.order);
@@ -35,7 +46,9 @@ export function distributeShots(items,budget){
 }
 export function discreteLevelCapacity(base,input,cal){
  const {validate,tick,weekAt,dateAt,day}=cal;const order=validate(base,input),p=clone(input);
- const normalLimit=normalWeeklyLimit(p.normalWeeklyLimit); const byId=new Map(base.works.map(w=>[w.id,w]));
+ const normalLimit=normalWeeklyLimit(p.normalWeeklyLimit);
+ const limitEvents=weeklyLimitEvents(p.weeklyLimitEvents,p.start).map(e=>({...e,t:tick(e.from)}));
+ const limitAt=t=>limitEvents.filter(e=>e.t<=t).at(-1)?.limit??normalLimit; const byId=new Map(base.works.map(w=>[w.id,w]));
  const deps=new Map(base.works.map(w=>[w.id,base.dependencies.filter(d=>d.successor===w.id)]));
  const linear=base.works.filter(linearWork),other=base.works.filter(w=>!linearWork(w));
  const caps=(p.capacities||[]).filter(c=>c.unit==='m'&&c.group==='metros').map(c=>({...c,t:tick(c.from)})).sort((a,b)=>a.t-b.t);
@@ -52,7 +65,7 @@ export function discreteLevelCapacity(base,input,cal){
  const rateAt=(id,t)=>rateEventAt(id,t)?.rate||0;
  const shotLimit=(w,t)=>{
   const event=rateEventAt(w.id,t);
-  return event?.manual ? Math.min(maxShots(w,normalLimit),Math.floor(event.rate/BLAST+EPS)) : maxShots(w,normalLimit);
+  return event?.manual ? Math.min(maxShots(w,limitAt(t)),Math.floor(event.rate/BLAST+EPS)) : maxShots(w,limitAt(t));
  };
  const readyAt=id=>{let at=Math.max(tick(p.start),tick(p.works[id].earliest));for(const d of deps.get(id)){if(done[d.predecessor]===undefined)return Infinity;const end=done[d.predecessor];at=Math.max(at,d.mode==='next-week'?Math.ceil((end-EPS)/6)*6:end)}return at};
  const groupOf=w=>p.works[w.id].resourceGroup||w.resourceGroup;
@@ -62,7 +75,7 @@ export function discreteLevelCapacity(base,input,cal){
    if(left<=EPS){segments.push(...temp);remaining[id]=0;done[id]=t;change=true;}
   }}}
  resolveOther();
- const start=tick(p.start),lastEvent=Math.max(start,...caps.map(c=>c.t),...p.rates.map(r=>tick(r.week)),...p.pauses.map(x=>tick(x.resume)),...Object.values(p.works).map(x=>tick(x.earliest)));
+ const start=tick(p.start),lastEvent=Math.max(start,...limitEvents.map(e=>e.t),...caps.map(c=>c.t),...p.rates.map(r=>tick(r.week)),...p.pauses.map(x=>tick(x.resume)),...Object.values(p.works).map(x=>tick(x.earliest)));
  let week=Math.floor(start/6)*6,iterations=0,blastCount=0;
  while(linear.some(w=>remaining[w.id]>EPS)){
   if(++iterations>10440)throw Error('El ajuste supera200años; revisa capacidad, pausas y ritmos.');
@@ -83,7 +96,7 @@ export function discreteLevelCapacity(base,input,cal){
    const owed=eligible.filter(w=>(used[w.id]||0)<(targets[w.id]||0));const w=pick(owed.filter(w=>rateEventAt(w.id,week)?.manual),'baseline')||pick(owed,'baseline')||pick(eligible,'extra');if(!w)continue;
    const q=Math.min(BLAST,remaining[w.id]);segments.push({workId:w.id,start:slot.start,end:slot.end,quantity:q,rate:q/(slot.end-slot.start)*6,resourceQuantity:BLAST,blastUnits:1,group:groupOf(w),unit:w.unit});used[w.id]=(used[w.id]||0)+1;remaining[w.id]-=q;usedCapacity+=BLAST;actual+=q;blastCount++;if(remaining[w.id]<=EPS){remaining[w.id]=0;done[w.id]=slot.end;}
   }
-  weeklyInfo.push({week:weekKey,available,usable:budget*BLAST,used:usedCapacity,actual,unused:available-usedCapacity,byWork:used});resolveOther();
+  weeklyInfo.push({week:weekKey,normalLimit:limitAt(week),available,usable:budget*BLAST,used:usedCapacity,actual,unused:available-usedCapacity,byWork:used});resolveOther();
   if(!usedCapacity&&week>lastEvent+6){const finiteFuture=linear.some(w=>remaining[w.id]>EPS&&Number.isFinite(readyAt(w.id))&&readyAt(w.id)>week+EPS);if(!finiteFuture)throw Error('No hay capacidad, ritmo o precedencias disponibles para completar las obras restantes.');}
   week=end;
  }

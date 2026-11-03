@@ -1,6 +1,6 @@
 import {productionCaps,limitMonthlyProduction} from './production.mjs?v=production-1';
 import {stableStringify,matchesSignature,planSignatureInputs} from './plan-signature.mjs?v=production-1';
-import {discreteLevelCapacity} from './capacity.mjs?v=limit-1';
+import {discreteLevelCapacity} from './capacity.mjs?v=dated-limit-1';
 /** MineCAD planning kernel. UTC dates; continuous six-day work calendar. */
 const MS=86400000,ANCHOR=Date.UTC(2026,9,5)/MS,EPS=1e-8;
 export const day=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))throw Error('Fecha inválida: '+s);const n=Date.parse(s+'T00:00:00Z')/MS;if(!Number.isFinite(n)||new Date(n*MS).toISOString().slice(0,10)!==s)throw Error('Fecha inválida: '+s);return n};
