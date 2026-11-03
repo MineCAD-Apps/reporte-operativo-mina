@@ -1,15 +1,4 @@
-Sube los siete archivos HTML/MJS de este ZIP a la carpeta de Planeación
-en GitHub. Requiere el motor de tumbe semanal ya publicado. No requiere
-cambios en Apps Script ni Sheets. Recarga con Ctrl+F5 al publicar.
-
-Capacidad y equipos > Rendimiento de cuadrillas: 12 barrenos/turno en
-contrapozo por defecto; 50 en el resto. Reserva inicial de desborde 2%
-sobre los turnos de barrenación. Captura m² terminados por turno para
-sostenimiento; hasta capturarlos la cifra queda pendiente si hay demanda.
-Pulsa Aplicar y Guardar para conservar los ajustes en el escenario.
-
-Sostenimiento usa superficie del motor de costos, sin aplicar merma a
-los m² instalados. Se muestran consumo de anclas y rollos con merma.
-Las cuadrillas de sostenimiento se suman aparte y no cambian los costos
-ni la programación. La comparativa conserva sus filas anteriores.
-Validación local superada; publicación pendiente.
+1. Sustituye Código.gs en Apps Script y publica una nueva versión de la implementación actual.
+2. Sube los nueve HTML/MJS a la carpeta de Planeación de GitHub Pages. La carpeta apps-script es para el paso 1.
+3. Recarga MineCAD y ejecuta Autoajustar en disparos en el escenario deseado. Revisa, aplica y guarda.
+El tope general por lugar es 15 m/semana (10 disparos); contrapozos 9 m. La capacidad total del escenario sigue vigente.

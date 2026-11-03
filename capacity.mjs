@@ -14,7 +14,7 @@ export function isRaise(work){
  return /contra\s*pozo|c\s*\/\s*pozo|c\s*\/\s*p\b/.test(text);
 }
 export const linearWork=w=>w.unit==='m'&&['Desarrollo','Preparación'].includes(w.type);
-export const maxShots=w=>(isRaise(w)?9:12)/BLAST;
+export const maxShots=w=>(isRaise(w)?9:15)/BLAST;
 export function distributeShots(items,budget){
  const ordered=[...items].sort((a,b)=>a.priority-b.priority||a.order-b.order);
  const targets=Object.fromEntries(ordered.map(w=>[w.id,Math.min(w.max,Math.max(0,Math.floor(w.requested/BLAST+EPS)))]));
@@ -76,7 +76,9 @@ export function discreteLevelCapacity(base,input,cal){
  }
  resolveOther();if(other.some(w=>remaining[w.id]>EPS))throw Error('Hay obras sin ritmo suficiente después de sus precedentes.');
  p.leveledSegments=segments.sort((a,b)=>a.start-b.start||a.workId.localeCompare(b.workId));
- p.capacityAdjustment={version:1,blastSize:BLAST,maxNormal:12,maxRaise:9,blastCount,weeks:weeklyInfo};
+ p.capacityAdjustment={version:1,blastSize:BLAST,maxNormal:15,maxRaise:9,blastCount,weeks:weeklyInfo};
  p.levelingAppliedAt=new Date().toISOString();p.levelingSource=stableStringify(planSignatureInputs(base,p));
  delete p.leveledWeekly;return p;
 }
+
+

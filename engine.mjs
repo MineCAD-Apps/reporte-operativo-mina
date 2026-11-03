@@ -1,6 +1,6 @@
 import {productionCaps,limitMonthlyProduction} from './production.mjs?v=production-1';
 import {stableStringify,matchesSignature,planSignatureInputs} from './plan-signature.mjs?v=production-1';
-import {discreteLevelCapacity} from './capacity.mjs?v=production-1';
+import {discreteLevelCapacity} from './capacity.mjs?v=cap15-1';
 /** MineCAD planning kernel. UTC dates; continuous six-day work calendar. */
 const MS=86400000,ANCHOR=Date.UTC(2026,9,5)/MS,EPS=1e-8;
 export const day=s=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(s))throw Error('Fecha inválida: '+s);const n=Date.parse(s+'T00:00:00Z')/MS;if(!Number.isFinite(n)||new Date(n*MS).toISOString().slice(0,10)!==s)throw Error('Fecha inválida: '+s);return n};
@@ -78,3 +78,4 @@ export function monthly(result){
 }
 export function setRate(plan,workId,week,rate){day(week);if(!Number.isFinite(+rate)||+rate<0)throw Error('El ritmo debe ser un número no negativo');const p=engineClone(plan);p.rates=p.rates.filter(r=>r.workId!==workId||r.week!==week);p.rates.push({planId:p.id,workId,week,rate:+rate});delete p.leveledWeekly;delete p.levelingSource;delete p.leveledSegments;delete p.capacityAdjustment;delete p.productionAdjustment;if(plan.autoAdjust||plan.capacityAdjustment?.version===1)p.autoAdjust=true;return p}
 export function newPlan(plan,name,comments){if(!name.trim())throw Error('Escribe un nombre');const p=engineClone(plan);p.id=globalThis.crypto?.randomUUID?.()||'plan-'+Date.now();p.name=name.trim();p.comments=comments;p.createdAt=p.updatedAt=new Date().toISOString();p.revision=0;let source=null;if(p.levelingSource&&p.leveledSegments){try{const original=JSON.parse(p.levelingSource);const current=planSignatureInputs({dependencies:p.projectDependencies||original.dependencies,productionFactors:original.productionFactors},p);if(matchesSignature(p.levelingSource,current))source=current}catch{}}for(const r of p.rates)r.planId=p.id;if(source){source.rates=p.rates;p.levelingSource=stableStringify(source)}else{for(const k of ['leveledSegments','leveledWeekly','levelingSource','capacityAdjustment','productionAdjustment'])delete p[k]}return p}
+
