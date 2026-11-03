@@ -5,6 +5,9 @@ const excelDate=(y,m,d)=>(Date.UTC(y,m-1,d)-Date.UTC(1899,11,30))/86400000;
 export class CostModel {
  constructor(model,base,month,quantities,blastQuantities={}){this.model=model;this.base=base;this.month=month;this.memo=new Map;this.stack=new Set;this.overrides={...base.monthlyInputs};this.inputs={};
   for(const[name,s]of Object.entries(model.sheets))this.inputs[name]={...s.values,...base.fixed[name]};
+  // Handling time is derived from its editable components, never a stale total.
+  const cycleInputs=this.inputs['Ciclos equipos']||{};
+  this.cycleRows=new Set(Object.keys(cycleInputs).filter(a=>/^A[0-9]+$/.test(a)).map(a=>+a.slice(1)).filter(r=>r>=8&&String(cycleInputs['A'+r]??'').trim()&&['K','L','M'].some(c=>Object.hasOwn(cycleInputs,c+r))));
   // Route lookups use the current catalog instead of the original eight rows.
   // All route columns share the same row list so MATCH and INDEX stay aligned.
   const routes=this.inputs['Áreas y obras']||{};
@@ -21,7 +24,7 @@ export class CostModel {
  cell(sheet,addr){addr=addr.replaceAll('$','');const key=sheet+'!'+addr;if(this.memo.has(key))return this.memo.get(key);if(this.stack.has(key))throw Error('Ciclo de costos: '+key);if(sheet==='Monthly'&&Object.hasOwn(this.overrides,addr))return this.overrides[addr];
   if(sheet==='Selector mensual'){if(addr==='E3')return 0;return null}
   let values,formulas;if(sheet==='Monthly'){values=this.model.monthly.values;formulas=this.model.monthly.formulas}else if(sheet==='Proyectos'){values=this.inputs.Proyectos;formulas={}}else{values=this.inputs[sheet];formulas=this.model.sheets[sheet]?.formulas;if(!values)throw Error('Hoja de costos no admitida: '+sheet)}
-  this.stack.add(key);try{const value=formulas?.[addr]?this.evaluate(formulas[addr],sheet):(values[addr]??null);this.memo.set(key,value);return value}finally{this.stack.delete(key)}
+  this.stack.add(key);try{const cycle=sheet==='Ciclos equipos'&&/^N[0-9]+$/.test(addr)&&this.cycleRows.has(+addr.slice(1));const value=cycle?['K','L','M'].reduce((total,c)=>total+num(this.cell(sheet,c+addr.slice(1))),0):formulas?.[addr]?this.evaluate(formulas[addr],sheet):(values[addr]??null);this.memo.set(key,value);return value}finally{this.stack.delete(key)}
  }
  ref(text,context){let sheet=context,a=text;if(text.includes('!')){const i=text.lastIndexOf('!');sheet=text.slice(0,i).replace(/^'|'$/g,'').replaceAll("''", "'");a=text.slice(i+1)}a=a.replaceAll('$','');
   if(!/^[A-Z]+\d+(?::[A-Z]+\d+)?$/.test(a))throw Error('Referencia no admitida: '+text);if(!a.includes(':'))return this.cell(sheet,a);
