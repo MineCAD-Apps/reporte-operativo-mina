@@ -1,3 +1,4 @@
-Sube estos cuatro archivos a la carpeta de Planeación en GitHub Pages.
-El paquete parte de la versión Topes fechados del 3 de noviembre.
-Abre el escenario y selecciona la vista. Pulsa Imprimir PDF y elige Guardar como PDF.
+Sustituye estos cuatro archivos en la carpeta de Planeación de GitHub Pages.
+En Resumen anual pulsa Imprimir PDF y elige Resumen anual y detalle de cada mes.
+Se imprime el periodo seleccionado, con el resumen al inicio y cada mes desde
+una página nueva. La cantidad de páginas por mes depende del detalle.

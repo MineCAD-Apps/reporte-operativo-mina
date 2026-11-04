@@ -1,4 +1,4 @@
-import {printActivePlan} from './plan-print.mjs';
+import {printActivePlan} from './plan-print.mjs?v=annual-detail-1';
 import {limitFor} from './production.mjs?v=production-1';
 import {calculateEconomics} from './economics.mjs?v=economics-1';
 import {openEconomicsEditor} from './economics-editor.mjs?v=economics-1';
@@ -127,17 +127,33 @@ init();
 
 
 
+function printCurrentPlan(includeMonths=false){
+ const {from,to}=period();
+ const monthlyDetails=includeMonths?monthKeys().map(month=>({
+  html:monthlyExcelReport({
+   month,works:selectedWorks(),quantities:months[month]||{},
+   cost:costs(month),grades:base.grades,resources:resourcesFor(month)
+  })
+ })):[];
+ printActivePlan({
+  name:plan.name,mine:$('#mineName').textContent,dirty,tab,
+  period:tab==='months'?monthName(reportMonth):monthName(from)+' – '+monthName(to),
+  type:$('#type').value,search:$('#search').value,
+  source:$('#content'),works:tab==='weeks'?selectedWorks():[],
+  weeks:tab==='weeks'?visibleWeeks():[],result,monthlyDetails
+ });
+}
 const printButton=$('#printPlan');
 if(printButton)printButton.addEventListener('click',()=>{
  try{
   if(!plan||!result||compareMode||!$('#error').hidden)return;
-  const {from,to}=period();
-  printActivePlan({
-   name:plan.name,mine:$('#mineName').textContent,dirty,tab,
-   period:tab==='months'?monthName(reportMonth):monthName(from)+' – '+monthName(to),
-   type:$('#type').value,search:$('#search').value,
-   source:$('#content'),works:tab==='weeks'?selectedWorks():[],
-   weeks:tab==='weeks'?visibleWeeks():[],result
-  });
+  if(tab!=='annual'){printCurrentPlan();return}
+  showEditor('Imprimir resumen anual','PDF DEL ESCENARIO',
+   '<label>Contenido<select id="annualPrintContents"><option value="summary">Solo resumen anual</option><option value="detailed">Resumen anual y detalle de cada mes</option></select></label><p>El resumen abre el documento como carátula. El detalle incluye los meses del periodo seleccionado, en orden, y cada mes empieza en página nueva.</p>',
+   ()=>{
+    const includeMonths=$('#annualPrintContents').value==='detailed';
+    $('#editor').close();
+    printCurrentPlan(includeMonths);
+   });
  }catch(e){fail(e)}
 });

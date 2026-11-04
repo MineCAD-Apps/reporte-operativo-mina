@@ -20,3 +20,5 @@ body.printing-plan > :not(#minecad-print) { display: none !important; }
 #minecad-print .print-active { background: #d8e8f8; font-weight: 700; }
 #minecad-print [data-type="Preparación"] { background: #f5e8c7; }
 #minecad-print [data-type="Tumbe"] { background: #d7eee5; }
+
+#minecad-print .print-month-appendix { break-before: page; }

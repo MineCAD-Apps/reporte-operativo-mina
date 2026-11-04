@@ -22,7 +22,7 @@ function weeklyTables(works,weeks,result){
  return sections.join('');
 }
 
-export function printActivePlan({name,mine,dirty,tab,period,type,search,source,works,weeks,result}){
+export function printActivePlan({name,mine,dirty,tab,period,type,search,source,works,weeks,result,monthlyDetails=[]}){
  const root=document.createElement('article');
  root.id='minecad-print';
  root.hidden=true;
@@ -34,6 +34,12 @@ export function printActivePlan({name,mine,dirty,tab,period,type,search,source,w
   const report=source.cloneNode(true);
   report.removeAttribute('id');
   root.append(report);
+ }
+ for(const month of monthlyDetails){
+  const section=document.createElement('section');
+  section.className='print-month-appendix';
+  section.innerHTML=month.html;
+  root.append(section);
  }
  document.body.append(root);
  document.body.classList.add('printing-plan');
