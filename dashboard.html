@@ -25,6 +25,11 @@
       <p class="filter-note">Las comparaciones de metas usan el mes de «Hasta» y su acumulado al día. El resto de indicadores usa el rango seleccionado.</p>
     </section>
     <div id="errorBox" class="error-box" hidden role="alert"></div>
+    <section id="dashboardConnection" class="card" hidden aria-label="Conexión del tablero">
+      <p>Inicia sesión con una cuenta autorizada y vuelve a conectar.</p>
+      <button id="dashboardAuthorize" class="primary" type="button">Autorizar Google</button>
+      <button id="dashboardReconnect" class="primary" type="button">Reconectar</button>
+    </section>
 
     <section class="card security-panel" aria-labelledby="securityTitle">
       <div class="section-title"><div><p class="eyebrow">Seguridad · ambas minas</p><h2 id="securityTitle">Calendario de seguridad</h2></div><span id="safetyStatus" class="period-tag">Datos globales de ambas minas</span></div>
@@ -137,6 +142,6 @@
       </details>
     </div>
   </main>
-  <script src="dashboard.js?v=29"></script>
+  <script type="module" src="dashboard.js?v=bridge-1"></script>
 </body>
 </html>

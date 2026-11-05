@@ -1,3 +1,4 @@
+import {PlanningClient} from './reportes-client.mjs';
 "use strict";
 const API_URL = "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
 const $ = id => document.getElementById(id);
@@ -53,9 +54,34 @@ function showError(message) { $('errorBox').hidden = false; $('errorBox').textCo
 function clearError() { $('errorBox').hidden = true; $('errorBox').textContent = ""; }
 
 function defaults() { const now = new Date(), first = new Date(now.getFullYear(), now.getMonth(), 1); $('filterFrom').value = iso(first); $('filterTo').value = iso(now); }
-async function request(action, common = "") { const response = await fetch(`${API_URL}?accion=${action}${common}`, { cache: "no-store" }); if (!response.ok) throw new Error(`${action}: HTTP ${response.status}`); const result = await response.json(); if (!result.ok) throw new Error(result.mensaje || `${action}: respuesta rechazada`); return result.datos ?? []; }
-async function requestEnvelope(action, common = "") { const response = await fetch(`${API_URL}?accion=${action}${common}`, { cache: "no-store" }); if (!response.ok) throw new Error(`${action}: HTTP ${response.status}`); const result = await response.json(); if (!result.ok) throw new Error(result.mensaje || `${action}: respuesta rechazada`); return result; }
-async function requestNullable(action, common = "") { const response = await fetch(`${API_URL}?accion=${action}${common}`, { cache: "no-store" }); if (!response.ok) throw new Error(`${action}: HTTP ${response.status}`); const result = await response.json(); if (!result.ok) throw new Error(result.mensaje || `${action}: respuesta rechazada`); return result.datos; }
+const connectionConfig = { apiUrl: API_URL, parentOrigin: 'https://minecad-apps.github.io' };
+let dashboardClient = new PlanningClient(connectionConfig);
+
+async function loadDashboardQueries(specs) {
+  const queries = specs.flatMap((spec, index) => spec
+    ? [{ id: String(index), action: spec[0], params: spec[1] || {} }] : []);
+  const responses = await dashboardClient.call('loadOperationalQueries', queries);
+  if (!Array.isArray(responses)) throw new Error('El servicio devolvió una respuesta incompleta.');
+  const byId = new Map(responses.map(response => [response.id, response]));
+  const failures = new Map();
+  for (const query of queries) {
+    const response = byId.get(query.id);
+    if (!response?.ok || !response.result?.ok) {
+      failures.set(query.action, response?.error || response?.result?.mensaje || 'Sin respuesta');
+    }
+  }
+  if (failures.size) {
+    throw new Error('No se pudo actualizar el tablero. ' +
+      [...failures].map(([action, message]) => action + ' · ' + message).join(' | '));
+  }
+  return specs.map((spec, index) => {
+    if (!spec) return index === 13 ? { datos: [], periodosPendientes: [] } : [];
+    const result = byId.get(String(index)).result;
+    if (index === 2 || index === 13) return result;
+    if (index === 9 || index === 10) return result.datos ?? null;
+    return result.datos ?? [];
+  });
+}
 function formatted(value, decimals=1) { return Number(value).toLocaleString("es-MX", {maximumFractionDigits:decimals,minimumFractionDigits:decimals}); }
 function daysOfMonth(month) { const [year,number]=month.split("-").map(Number); return new Date(year,number,0).getDate(); }
 function monthLabel(month) { return new Date(`${month}-02T12:00:00`).toLocaleDateString("es-MX",{month:"long",year:"numeric"}); }
@@ -63,28 +89,29 @@ function monthLabel(month) { return new Date(`${month}-02T12:00:00`).toLocaleDat
 async function load() {
   const mine = $('filterMine').value, from = $('filterFrom').value, to = $('filterTo').value;
   if (!from || !to || from > to) return alert("Selecciona un rango de fechas válido.");
-  const button = $('applyFilters'); button.disabled = true; button.textContent = "Consultando…"; $('statusText').textContent = "Consultando…"; clearError();
-  const common = `&mina=${encodeURIComponent(mine)}&desde=${from}&hasta=${to}`;
+  const button = $('applyFilters'); button.disabled = true; button.textContent = "Consultando…"; $('statusText').textContent = "Consultando…"; clearError(); $('dashboardConnection').hidden = true;
+  const common = { mina: mine, desde: from, hasta: to };
   const month=to.slice(0,7), monthStart=`${month}-01`, today=iso(new Date()), cutoff=to<today?to:today;
   const monthEnd=`${month}-${String(daysOfMonth(month)).padStart(2,"0")}`;
-  const monthParams=`&mina=${encodeURIComponent(mine)}&desde=${monthStart}&hasta=${cutoff}`;
+  const monthParams = { mina: mine, desde: monthStart, hasta: cutoff };
+  const monthQueries = cutoff >= monthStart
+    ? [['dias_reportados', monthParams], ['acarreo_planta', monthParams], ['avance_topografico', monthParams]]
+    : [null, null, null];
   try {
-    const results = await Promise.allSettled([
-      request("seguridad"), request("personal"), requestEnvelope("avance_topografico", common), request("equipos", common),
-      request("movimiento_material", common), request("maquinas_pierna", common), request("acarreo_planta", common),
-      request("stopemate", common), request("barrenacion_exploracion", common),
-      requestNullable("plan_produccion_mensual",`&mina=${encodeURIComponent(mine)}&mes=${month}`),
-      requestNullable("stock_patio",`&mina=${encodeURIComponent(mine)}&hasta=${cutoff}`),
-      ...(cutoff>=monthStart ? [request("dias_reportados",monthParams),request("acarreo_planta",monthParams),requestEnvelope("avance_topografico",monthParams)] : [Promise.resolve([]),Promise.resolve([]),Promise.resolve({datos:[],periodosPendientes:[]})]),
-      request("catalogos"), request("consumo_insumos", common), request("barrenacion", common)
+    const data = await loadDashboardQueries([
+      ['seguridad'], ['personal'], ['avance_topografico', common], ['equipos', common],
+      ['movimiento_material', common], ['maquinas_pierna', common], ['acarreo_planta', common],
+      ['stopemate', common], ['barrenacion_exploracion', common],
+      ['plan_produccion_mensual', { mina: mine, mes: month }],
+      ['stock_patio', { mina: mine, hasta: cutoff }],
+      ...monthQueries, ['catalogos'], ['consumo_insumos', common], ['barrenacion', common]
     ]);
-    const data = results.map((r,i) => { if (r.status === "rejected") { showError(`${$('errorBox').textContent ? $('errorBox').textContent + " · " : ""}${r.reason.message}`); return i < 2 ? {} : i===9||i===10 ? null : i===2||i===13 ? {datos:[],periodosPendientes:[]} : []; } return r.value; });
     renderSafety(data[0]); renderPersonal(data[1]); renderProduction(data[2].datos||[],data[2]); renderFleet(data[3], data[4], data[5]); renderMp(data[5]); renderPlant(data[6]); renderStope(data[7]); renderExploration(data[8]);
-    renderExecutiveMonth({month,monthStart,monthEnd,cutoff,plan:data[9],stock:data[10],days:data[11],shipments:data[12],drilling:data[13].datos||[],drillingMeta:data[13],catalogs:data[14],daysOk:results[11].status==='fulfilled',shipmentsOk:results[12].status==='fulfilled',drillingOk:results[13].status==='fulfilled',catalogsOk:results[14].status==='fulfilled'});
-    renderInputs(data[15],data[6],results[15].status==='fulfilled',results[6].status==='fulfilled');
+    renderExecutiveMonth({month,monthStart,monthEnd,cutoff,plan:data[9],stock:data[10],days:data[11],shipments:data[12],drilling:data[13].datos||[],drillingMeta:data[13],catalogs:data[14],daysOk:!!monthQueries[0],shipmentsOk:!!monthQueries[1],drillingOk:!!monthQueries[2],catalogsOk:true});
+    renderInputs(data[15],data[6],true,true);
     renderReportedWorks(data[16] || []);
     $('statusText').textContent = `${mine} · ${from} a ${to}`;
-  } catch (error) { showError(error.message); $('statusText').textContent = "Error de consulta"; }
+  } catch (error) { showError(error.message); $('statusText').textContent = "Tablero sin actualizar"; $('dashboardConnection').hidden = false; }
   finally { button.disabled = false; button.textContent = "Aplicar filtros"; }
 }
 
@@ -285,4 +312,13 @@ function compareBars(id,planned,actual,unit) {
 }
 function chart(id,type,labels,datasets,percent=false,extras={}) { if(charts[id])charts[id].destroy(); charts[id]=new Chart($(id),{type,data:{labels,datasets},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom"}},scales:{y:{beginAtZero:true,max:percent?100:undefined,ticks:{callback:percent?v=>`${v}%`:undefined}}},...extras}}); }
 document.querySelectorAll(".area-detail").forEach(detail=>detail.addEventListener("toggle",()=>{if(detail.open){document.querySelectorAll(".area-detail").forEach(other=>{if(other!==detail)other.open=false;});requestAnimationFrame(()=>Object.values(charts).forEach(instance=>instance.resize()));}else{detail.querySelectorAll(".records-detail").forEach(records=>records.open=false);}}));
+$('dashboardAuthorize').addEventListener('click', () => {
+  window.open(dashboardClient.authorizationUrl(), '_blank', 'noopener,noreferrer');
+});
+$('dashboardReconnect').addEventListener('click', () => {
+  if ($('applyFilters').disabled) return;
+  dashboardClient.dispose();
+  dashboardClient = new PlanningClient(connectionConfig);
+  load();
+});
 $('applyFilters').addEventListener("click",load); defaults(); load();

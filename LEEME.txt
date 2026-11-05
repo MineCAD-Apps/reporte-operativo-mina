@@ -1,4 +1,10 @@
-Sustituye estos cuatro archivos en la carpeta de Planeación de GitHub Pages.
-En Resumen anual pulsa Imprimir PDF y elige Resumen anual y detalle de cada mes.
-Se imprime el periodo seleccionado, con el resumen al inicio y cada mes desde
-una página nueva. La cantidad de páginas por mes depende del detalle.
+1. Sustituye Código.gs en el proyecto de Apps Script que sirve MineCAD.
+   El archivo parte de la última entrega de topes fechados. Si modificaste
+   ese archivo después, integra solo las cuatro acciones nuevas de lectura
+   en REPORT_READ_ACTIONS_: personal, maquinas_pierna, stopemate, consumo_insumos.
+2. Confirma que Bridge.html admite loadOperationalQueries. El archivo incluido
+   es el mismo de la entrega de Planos. Si ya está instalado, consérvalo.
+3. Publica una versión de la implementación actual, con la misma URL /exec.
+4. Sube dashboard.html, dashboard.js y reportes-client.mjs a GitHub Pages.
+   Abre el dashboard y, si pide conexión, pulsa Autorizar Google y Reconectar.
+   La cuenta debe tener el acceso ya autorizado en MineCAD.
