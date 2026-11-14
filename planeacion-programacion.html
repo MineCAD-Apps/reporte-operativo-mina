@@ -221,7 +221,7 @@
   </main>
 
   <script type="module">
-    import { connectProjects } from './proyectos-client.mjs';
+    import { connectProjects } from './proyectos-client.mjs?v=deployment-2';
     const queryProjects = connectProjects(reloadPlanning);
     const DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
     const weekStart = document.getElementById("weekStart");

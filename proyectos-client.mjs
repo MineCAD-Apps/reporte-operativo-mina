@@ -1,8 +1,13 @@
 import { PlanningClient } from './reportes-client.mjs';
 import { planningConfig } from './planning-config.mjs';
 
+const projectsConfig = {
+  ...planningConfig,
+  apiUrl: 'https://script.google.com/macros/s/AKfycbytxpCGAxIZ-WJOdPesPdooW6lJwUPnxtjaz5c2l5UPT2vDnCVplNf82TdHxVWIrxp4SQ/exec',
+};
+
 export function connectProjects(reload) {
-  let client = new PlanningClient(planningConfig);
+  let client = new PlanningClient(projectsConfig);
   const reconnect = document.getElementById('reconnectProjects');
 
   document.getElementById('authorizeProjects').addEventListener('click', () => {
@@ -11,7 +16,7 @@ export function connectProjects(reload) {
   reconnect.addEventListener('click', async () => {
     reconnect.disabled = true;
     client.dispose();
-    client = new PlanningClient(planningConfig);
+    client = new PlanningClient(projectsConfig);
     try {
       await reload();
     } finally {
@@ -25,7 +30,7 @@ export function connectProjects(reload) {
     try {
       responses = await client.call('loadOperationalQueries', [{ id, action, params }]);
     } catch (error) {
-      if (error.message === 'Consulta de reporte no admitida' || error.message === 'Filtro no admitido') {
+      if (/^(?:Error:\s*)?(?:Consulta de reporte no admitida|Filtro no admitido)\.?$/.test(error.message)) {
         throw new Error('La implementación de Apps Script aún no admite las consultas de proyectos. Publica la actualización del servicio.');
       }
       throw error;
