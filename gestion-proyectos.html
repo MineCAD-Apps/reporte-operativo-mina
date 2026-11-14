@@ -266,6 +266,11 @@
       </div>
     </section>
 
+    <p>
+      <button type="button" id="authorizeProjects">Autorizar Google</button>
+      <button type="button" id="reconnectProjects">Reconectar</button>
+    </p>
+
     <section class="filters" aria-label="Filtros de proyectos">
       <div class="field">
         <label for="mineFilter">Mina</label>
@@ -318,9 +323,9 @@
     <section id="projectsGrid" class="projects-grid" aria-live="polite"></section>
   </main>
 
-  <script>
-    const API_URL =
-      "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
+  <script type="module">
+    import { connectProjects } from './proyectos-client.mjs';
+    const queryProjects = connectProjects(init);
 
     let projects = [];
 
@@ -380,6 +385,7 @@
     }
 
     function fillFilter(select, values) {
+      const previous = select.value;
       const firstOption = select.options[0];
       select.innerHTML = "";
       select.append(firstOption);
@@ -390,6 +396,7 @@
         option.textContent = value;
         select.append(option);
       });
+      if (values.includes(previous)) select.value = previous;
     }
 
     function filteredProjects() {
@@ -517,21 +524,10 @@
     }
 
     async function init() {
+      loadingMessage.hidden = false;
+      errorMessage.hidden = true;
       try {
-        const response = await fetch(
-          `${API_URL}?accion=proyectos`,
-          { cache: "no-store" }
-        );
-
-        if (!response.ok) {
-          throw new Error(`HTTP ${response.status}`);
-        }
-
-        const result = await response.json();
-
-        if (!result.ok) {
-          throw new Error(result.mensaje || "La API devolvió un error.");
-        }
+        const result = await queryProjects('proyectos');
 
         projects = Array.isArray(result.datos) ? result.datos : [];
 

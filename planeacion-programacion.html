@@ -148,6 +148,11 @@
       <div class="heading-actions"><a class="capture-link" href="captura.html">Capturar cumplimiento</a></div>
     </section>
 
+    <p>
+      <button type="button" id="authorizeProjects">Autorizar Google</button>
+      <button type="button" id="reconnectProjects">Reconectar</button>
+    </p>
+
     <nav class="view-tabs" aria-label="Vistas de planeación">
       <button class="view-tab active" type="button" data-view="weekly">Programa semanal</button>
       <button class="view-tab" type="button" data-view="projects">Cronograma de proyectos</button>
@@ -215,8 +220,9 @@
     </section>
   </main>
 
-  <script>
-    const API_URL = "https://script.google.com/macros/s/AKfycbzstqms0HqJ5wWqt8oECspm9VkqRy5i5cYrMQ3kY3rhYADVnttDVu2He9tZuCu44w7p/exec";
+  <script type="module">
+    import { connectProjects } from './proyectos-client.mjs';
+    const queryProjects = connectProjects(reloadPlanning);
     const DAYS = ["lunes", "martes", "miércoles", "jueves", "viernes", "sábado", "domingo"];
     const weekStart = document.getElementById("weekStart");
     const mineFilter = document.getElementById("mineFilter");
@@ -483,21 +489,19 @@
       if (available.some(project => project.idProyecto === previous)) projectSelect.value = previous;
     }
     async function loadProjects() {
+      ganttLoading.textContent = "Cargando proyectos…";
       ganttLoading.hidden = false;
       ganttError.hidden = true;
       try {
-        const response = await fetch(`${API_URL}?accion=proyectos`, { cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const result = await response.json();
-        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        const result = await queryProjects('proyectos');
         projects = Array.isArray(result.datos) ? result.datos : [];
         const requested = new URLSearchParams(location.search).get("proyecto") || "";
         const requestedProject = projects.find(project => project.idProyecto === requested);
         if (requestedProject) projectMineFilter.value = requestedProject.mina || "";
         fillProjectSelect(requested);
         ganttLoading.hidden = true;
-        if (requestedProject) {
-          selectPlanningView("projects");
+        if (projectSelect.value) {
+          if (requestedProject) selectPlanningView("projects");
           await loadGantt();
         } else if (!projects.length) {
           ganttLoading.textContent = "No hay proyectos activos disponibles.";
@@ -533,11 +537,7 @@
       ganttPanel.hidden = true;
       unscheduledPanel.hidden = true;
       try {
-        const params = new URLSearchParams({ accion: "actividades_proyecto", id_proyecto: idProject });
-        const response = await fetch(`${API_URL}?${params}`, { cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const result = await response.json();
-        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        const result = await queryProjects('actividades_proyecto', { id_proyecto: idProject });
         currentProject = result.proyecto || projects.find(project => project.idProyecto === idProject) || null;
         currentProjectTasks = Array.isArray(result.datos) ? result.datos : [];
         ganttLoading.hidden = true;
@@ -559,12 +559,9 @@
       errorMessage.hidden = true;
       schedule.innerHTML = "";
       try {
-        const params = new URLSearchParams({ accion: "programacion_semanal", semana_inicio: weekStart.value });
-        if (mineFilter.value) params.set("mina", mineFilter.value);
-        const response = await fetch(`${API_URL}?${params}`, { cache: "no-store" });
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        const result = await response.json();
-        if (!result.ok) throw new Error(result.mensaje || "La API devolvió un error.");
+        const params = { semana_inicio: weekStart.value };
+        if (mineFilter.value) params.mina = mineFilter.value;
+        const result = await queryProjects('programacion_semanal', params);
         const items = Array.isArray(result.datos) ? result.datos : [];
         updateSummary(items);
         renderSchedule(items);
@@ -593,8 +590,10 @@
     projectMineFilter.addEventListener("change", () => { fillProjectSelect(); loadGantt(); });
     ganttScale.addEventListener("change", renderGantt);
     weekStart.value = dateToText(mondayFor(new Date()));
-    loadSchedule();
-    loadProjects();
+    function reloadPlanning() {
+      return Promise.all([loadSchedule(), loadProjects()]);
+    }
+    reloadPlanning();
   </script>
 </body>
 </html>
