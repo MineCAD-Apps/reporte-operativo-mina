@@ -8,12 +8,12 @@ function weeklyTables(works,weeks,result){
  for(let offset=0;offset<weeks.length;offset+=12){
   const block=weeks.slice(offset,offset+12);
   sections.push(`<section class="print-week-block"><table><thead>
-   <tr><th colspan="${block.length+2}">Semanas del ${block[0]} al ${block.at(-1)} · fechas de inicio</th></tr>
-   <tr><th>Obra</th><th>Unidad</th>${block.map(w=>`<th>${w.slice(8)}/${w.slice(5,7)}</th>`).join('')}</tr>
+   <tr><th colspan="${block.length+4}">Semanas del ${block[0]} al ${block.at(-1)} · fechas de inicio</th></tr>
+   <tr><th>Obra</th><th>Unidad</th><th>Bloque</th><th>AgEq</th>${block.map(w=>`<th>${w.slice(8)}/${w.slice(5,7)}</th>`).join('')}</tr>
    </thead><tbody>${works.map(work=>{
     const row=result.rows[work.id];
     return `<tr><th>${escapeHtml(work.name)}<small>${escapeHtml(work.id)} · ${escapeHtml(work.type)}</small></th>
-      <td>${escapeHtml(work.unit)}</td>${block.map(week=>{
+      <td>${escapeHtml(work.unit)}</td><td>${escapeHtml(work.block||'—')}</td><td>${work.agEq==null?'—':number.format(work.agEq)}</td>${block.map(week=>{
        const quantity=row.weekly[week];
        return quantity?`<td class="print-active" data-type="${escapeHtml(work.type)}">${number.format(quantity)}</td>`:'<td>—</td>';
       }).join('')}</tr>`;

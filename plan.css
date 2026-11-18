@@ -68,3 +68,10 @@
 
 /* Shared annual financial hierarchy; details only expand in the standalone summary. */
 .annual-cost-toggle{display:inline-flex;align-items:center;gap:6px;border:0;border-radius:0;padding:0;background:transparent;font:inherit;color:inherit;font-weight:inherit;text-align:left}.annual-cost-toggle:hover{background:transparent;text-decoration:underline}.annual-cost-toggle:focus-visible{outline:2px solid var(--blue);outline-offset:4px}.annual-operating-detail[hidden]{display:none!important}.annual-operating-detail th,.annual-operating-detail td{font-size:11px;background:#fafbfd!important}.annual-operating-detail th{padding-left:28px!important;font-weight:450}.annual-divider td,.annual-divider th{height:18px!important;padding:0!important;background:#fff!important;border-bottom:0!important}.annual-sheet [data-annual-metric="operatingMargin"] th,.annual-sheet [data-annual-metric="operatingMargin"] td,.annual-sheet [data-annual-metric="plantMargin"] th,.annual-sheet [data-annual-metric="plantMargin"] td{font-weight:800;border-bottom:2px solid #9eafbc}
+.monthly-inputs{background:#fff;border:1px solid #c5ced6}
+.input-detail-sheet{font-size:12px;width:100%;margin:8px 0 14px}
+.input-detail-sheet th,.input-detail-sheet td{position:static;min-width:0;max-width:none;padding:6px 9px;background:#fff;white-space:normal}
+.input-detail-sheet th{font-weight:500}
+.monthly-inputs .input-detail-sheet .num{white-space:nowrap}
+.input-detail{font:inherit;font-weight:650;white-space:normal;text-align:left;padding:0;border:0;background:none;border-radius:0}
+.input-detail:hover{text-decoration:underline;background:none;color:var(--blue)}

@@ -1,29 +1,31 @@
-import {printActivePlan} from './plan-print.mjs?v=annual-detail-1';
-import {limitFor} from './production.mjs?v=production-1';
-import {calculateEconomics} from './economics.mjs?v=economics-1';
-import {openEconomicsEditor} from './economics-editor.mjs?v=economics-1';
+import {printActivePlan} from './plan-print.mjs?v=patio-1';
+import {applyBlockGrades,mineMonth,sumProduction} from './mine-production.mjs?v=patio-1';
 import {availableYears,yearPeriod} from './year-range.mjs?v=annual-years-1';
-import {openCapacityEditor} from './capacity-editor.mjs?v=dated-limit-1';
-import {reconcileProject,assignModelRows} from './project-sync.mjs?v=production-1';
-import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindAnnualCostDetails,bindComparisonScroll,projectExcelGrid,costDetailReport,monthName,resourcesDetailReport} from './report-views.mjs?v=crew-1';
-import {monthlyResources} from './resources.mjs?v=crew-1';
+import {openCapacityEditor} from './capacity-editor.mjs?v=patio-1';
+import {reconcileProject} from './project-sync.mjs?v=production-1';
+import {monthlyExcelReport,annualExcelReport,annualComparisonReport,bindComparisonScroll,projectExcelGrid,inputDetailReport,monthName,resourcesDetailReport} from './report-views.mjs?v=patio-1';
+import {monthlyResources} from './resources.mjs?v=patio-1';
 import {isRaise} from './capacity.mjs?v=dated-limit-1';
 import {PlanningClient} from './api-client.mjs?v=production-1';
 import {planningConfig} from './planning-config.mjs';
 import {schedule,setRate,monthly,newPlan,weekAt,tick,dateAt,endDate,levelCapacity,day,iso,validate} from './engine.mjs?v=dated-limit-1';
-import {CostModel} from './costs.mjs?v=crew-1';
-const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),fmt=(n,d=2)=>n===null||n===undefined?'—':Number(n).toLocaleString('es-MX',{maximumFractionDigits:d,minimumFractionDigits:d}),money=n=>n===null||n===undefined?'—':'$'+fmt(n,0),clone=x=>JSON.parse(JSON.stringify(x));
-const STORAGE='minecad.planning.v1',DRAFT='minecad.planning.draft.v1';let base,model,plan,result,months,costCache={},dirty=false,tab='months',reportMonth='',editHandler,proposal,cloud=false,compareMode=document.body.dataset.view==='compare';
+const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],esc=v=>String(v??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])),fmt=(n,d=2)=>n===null||n===undefined?'—':Number(n).toLocaleString('es-MX',{maximumFractionDigits:d,minimumFractionDigits:d}),clone=x=>JSON.parse(JSON.stringify(x));
+const STORAGE='minecad.planning.v1',DRAFT='minecad.planning.draft.v1';let base,plan,result,months,productionCache=new Map(),dirty=false,tab='months',reportMonth='',editHandler,proposal,cloud=false,compareMode=document.body.dataset.view==='compare';
 let catalog,currentMine='unificacion';
 let planningTransport=new PlanningClient(planningConfig);const server=(method,...args)=>planningTransport.call(method,...args);
 function fail(e){$('#error').textContent=e.message||String(e);$('#error').hidden=false;if(/autoriz|authoriz|Google|conectar|sesión|conexión|confirmación/i.test(e.message||''))$('#connectionTools').hidden=false;console.error(e)}function clearError(){$('#error').hidden=true}function busy(v){for(const el of $$('.toolbar button,.actions button,.filters button,.filters input,.filters select,.tabs button,#mine'))el.disabled=v||!plan}
-function fromCloud(raw){catalog=raw;const project=raw.schemaVersion===3?raw.projects.find(p=>p.id===currentMine):null;if(raw.schemaVersion===3&&!project)throw Error('Mina no encontrada');const b=clone(base);b.economics=raw.economics;b.mineId=currentMine;b.mines=raw.schemaVersion===3?raw.projects.map(p=>({id:p.id,name:p.name,count:p.tables.OBRAS.length-1})):[{id:'unificacion',name:'Unificación',count:raw.tables.OBRAS.length-1}];b.initial=project?.initial||[];const t=project?project.tables:raw.tables;if(!t.COSTOS_COMUNES||!t.OBRAS||!t.PLANES)throw Error('La base de planeación no tiene la estructura requerida. Revisa la instalación.');b.monthlyInputs=Object.fromEntries(t.COSTOS_COMUNES.slice(1).filter(r=>r[0]).map(r=>[r[0],r[1]]));const objects=rows=>rows.slice(1).filter(r=>r[0]).map(r=>Object.fromEntries(rows[0].map((h,i)=>[h,r[i]??''])));const works=objects(t.OBRAS);b.works=works.map(w=>({id:w.id,name:w.nombre,type:w.tipo,unit:w.unidad,target:+w.objetivo_total,planned:+w.alcance_programado,area:w.area,section:w.seccion,material:w.material,level:w.nivel,sourceRow:+w.fila_origen,priority:+w.prioridad,resourceGroup:w.grupo_recurso}));b.dependencies=objects(t.PRECEDENCIAS).map(d=>({predecessor:d.antecedente_id,successor:d.dependiente_id,mode:d.regla}));
+function fromCloud(raw){catalog=raw;const project=raw.schemaVersion===3?raw.projects.find(p=>p.id===currentMine):null;if(raw.schemaVersion===3&&!project)throw Error('Mina no encontrada');const b=clone(base);b.mines=raw.schemaVersion===3?raw.projects.map(p=>({id:p.id,name:p.name,count:p.tables.OBRAS.length-1})):[{id:'unificacion',name:'Unificación',count:raw.tables.OBRAS.length-1}];b.initial=project?.initial||[];const t=project?project.tables:raw.tables;if(!t.OBRAS||!t.PLANES)throw Error('La base de planeación no tiene la estructura requerida. Revisa la instalación.');const objects=rows=>rows.slice(1).filter(r=>r[0]).map(r=>Object.fromEntries(rows[0].map((h,i)=>[h,r[i]??''])));const works=objects(t.OBRAS);b.works=works.map(w=>({id:w.id,name:w.nombre,type:w.tipo,unit:w.unidad,target:+w.objetivo_total,planned:+w.alcance_programado,area:w.area,section:w.seccion,material:w.material,level:w.nivel,priority:+w.prioridad,resourceGroup:w.grupo_recurso}));b.dependencies=objects(t.PRECEDENCIAS).map(d=>({predecessor:d.antecedente_id,successor:d.dependiente_id,mode:d.regla}));
  const rates=objects(t.RITMOS),scopes=objects(t.PLAN_OBRAS),pauses=objects(t.PAUSAS),caps=objects(t.CAPACIDAD),segments=objects(t.SEGMENTOS||[['plan_id']]);b.plans=objects(t.PLANES).map(p=>({id:p.id,name:p.nombre,comments:p.comentarios,start:p.inicio,createdAt:p.creado,updatedAt:p.actualizado,revision:+p.revision,mineId:currentMine,rates:rates.filter(r=>r.plan_id===p.id).map(r=>({planId:p.id,workId:r.obra_id,week:r.semana,rate:+r.ritmo_semanal})),works:Object.fromEntries(scopes.filter(r=>r.plan_id===p.id).map(r=>[r.obra_id,{quantity:+r.alcance,earliest:r.inicio_minimo,priority:+r.prioridad,resourceGroup:r.grupo_recurso}])),pauses:pauses.filter(r=>r.plan_id===p.id).map(r=>({workId:r.obra_id,from:r.desde,resume:r.retoma})),capacities:caps.filter(r=>r.plan_id===p.id).map(r=>({group:r.grupo_recurso,from:r.desde,capacity:+r.capacidad_semanal,unit:r.unidad})),...(p.huella_ajuste?{levelingSource:p.huella_ajuste,leveledSegments:segments.filter(r=>r.plan_id===p.id).map(r=>({workId:r.obra_id,start:+r.inicio_tick,end:+r.fin_tick,quantity:+r.cantidad,rate:+r.ritmo,group:r.grupo,unit:r.unidad}))}:{})}));
  if(project?.savedPlans)b.plans=project.savedPlans.map(clone);
- const L=n=>{let s='';while(n){n--;s=String.fromCharCode(65+n%26)+s;n=Math.floor(n/26)}return s};for(const name of Object.keys(b.fixed)){if(!t[name])continue;b.fixed[name]={};t[name].forEach((r,i)=>r.forEach((v,j)=>{if(v!==''&&v!==null)b.fixed[name][L(j+1)+(i+1)]=v}))}b.grades=objects(t.LEYES).map(g=>({workId:g.obra_id,month:g.mes,J:g.Au===''?null:+g.Au,K:g.Ag===''?null:+g.Ag,L:g.Pb===''?null:+g.Pb,M:g.Cu===''?null:+g.Cu,N:g.Zn===''?null:+g.Zn}));if(!project)b.initial=b.works.map(w=>({id:w.id,rate:b.plans[0]?.rates.filter(r=>r.workId===w.id).sort((a,b)=>a.week.localeCompare(b.week))[0]?.rate||0,earliest:b.plans[0]?.works[w.id]?.earliest||b.plans[0]?.start}));assignModelRows(b.works);b.plans=b.plans.map(p=>reconcileProject(b,p));return b}
-async function init(){try{busy(true);base={schemaVersion:1,currency:'MXN',sourceName:'Google Sheets · base de planeación',sourceSHA256:'planning-live-v2',works:[],dependencies:[],plans:[],fixed:{Precios:{},Aux:{},'Ciclos equipos':{},'Nómina':{},'Áreas y obras':{}},grades:[],monthlyInputs:{}};cloud=true;
+ b.fixed.Aux={};
+ for(const [i,row] of (t.Aux||[]).entries())for(const [j,value] of row.slice(0,13).entries()){
+  if(value!==''&&value!=null)b.fixed.Aux[String.fromCharCode(65+j)+(i+1)]=value;
+ }
+ b.grades=t.LEYES?.length?objects(t.LEYES):[];
+ if(!project)b.initial=b.works.map(w=>({id:w.id,rate:b.plans[0]?.rates.filter(r=>r.workId===w.id).sort((a,b)=>a.week.localeCompare(b.week))[0]?.rate||0,earliest:b.plans[0]?.works[w.id]?.earliest||b.plans[0]?.start}));applyBlockGrades(b.works,raw.economics,currentMine);b.plans=b.plans.map(p=>reconcileProject(b,p));return b}
+async function init(){try{busy(true);base={sourceSHA256:'planning-live-v2',works:[],dependencies:[],plans:[],fixed:{Aux:{}}};cloud=true;
  if(!planningConfig.apiUrl)throw Error('Instalación pendiente: pega la URL /exec de Apps Script en planning-config.mjs y vuelve a publicar ese archivo.');
- [model,base]=await Promise.all([fetch('cost-model.json',{cache:'no-cache'}).then(r=>{if(!r.ok)throw Error('No se pudo cargar el modelo de costos');return r.json()}),server('loadPlanningData').then(fromCloud)]);
+ base=fromCloud(await server('loadPlanningData'));
  $('#connection').textContent='';$('#connection').hidden=true;$('#connectionTools').hidden=true;
  ensureInitialPlan();fillMines();if(!base.plans.length)throw Error('La mina no contiene obras para planear');plan=clone(base.plans[0]);const draft=localStorage.getItem(DRAFT);if(draft&&!compareMode){try{const d=JSON.parse(draft);if(d.sourceSHA===base.sourceSHA256&&d.plan&&(!d.plan.mineId||d.plan.mineId===currentMine)&&confirm('Hay un borrador sin guardar. ¿Quieres recuperarlo?')){plan=reconcileProject(base,d.plan);dirty=true}}catch{}}
  fillPlans();calculate();$('#sourceInfo').textContent=compareMode?'':'Plan: '+plan.name;$('#planner').hidden=compareMode;$('#comparison').hidden=!compareMode;$('#planToolbar').hidden=compareMode;if(compareMode){$('#heading').textContent='Comparación de resúmenes anuales';$('#compareLink').classList.add('active')}else $('#plannerLink').classList.add('active');if(false){$('#plannerLink').href='#programar';$('#compareLink').href='#comparar';for(const [id,value]of [['plannerLink',false],['compareLink',true]])$('#'+id).onclick=e=>{e.preventDefault();compareMode=value;$('#planner').hidden=value;$('#comparison').hidden=!value;$('#planToolbar').hidden=value;$('#heading').textContent=value?'Comparación de planes':'Planeación y escenarios';render()}}if(window.MINECAD_APP_URL){$('#plannerLink').href=window.MINECAD_APP_URL;$('#compareLink').href=window.MINECAD_APP_URL+'?vista=comparar'}render();}catch(e){$('#connection').textContent='No se pudo cargar el plan';$('#connection').hidden=false;$('#connectionTools').hidden=false;$('#save').disabled=true;fail(e)}finally{busy(false)}}
@@ -32,14 +34,26 @@ function initialPlan(){const dates=base.initial.map(w=>w.earliest).filter(Boolea
 function ensureInitialPlan(){if(!base.plans.length&&base.works.length)base.plans.push(initialPlan())}
 $('#mine').onchange=()=>{if(dirty&&!confirm('Hay cambios sin guardar. ¿Descartarlos y cambiar de mina?')){$('#mine').value=currentMine;return}try{currentMine=$('#mine').value;base=fromCloud(catalog);ensureInitialPlan();plan=clone(base.plans[0]);dirty=false;localStorage.removeItem(DRAFT);compareSelected.clear();window.compareInitialized=false;fillMines();fillPlans();calculate();render()}catch(e){fail(e)}};
 function fillPlans(){const selected=plan?.id;$('#plans').innerHTML=base.plans.map(p=>`<option value="${esc(p.id)}">${esc(p.name)}</option>`).join('');if(base.plans.some(p=>p.id===selected))$('#plans').value=selected}
-function calculate(){validate(base,plan);if(plan.autoAdjust&&!plan.leveledSegments)plan=levelCapacity(base,plan);result=schedule(base,plan);months=monthly(result);costCache={};syncYears()}
+function calculate(){validate(base,plan);if(plan.autoAdjust&&!plan.leveledSegments)plan=levelCapacity(base,plan);result=schedule(base,plan);months=monthly(result);productionCache.clear();syncYears()}
 function period(){const from=$('#from').value,to=$('#to').value;if(!from||!to||from>to)throw Error('Selecciona un periodo válido');return {from,to}}
 function monthKeys(){const{from,to}=period(),out=[];let y=+from.slice(0,4),m=+from.slice(5);while(`${y}-${String(m).padStart(2,'0')}`<=to){out.push(`${y}-${String(m).padStart(2,'0')}`);m++;if(m>12){y++;m=1}if(out.length>1200)throw Error('Selecciona un periodo de hasta 100 años para visualizar')}return out}
-function costs(month,b=base,m=months){if(m.bounds&&(month<m.bounds.from||month>m.bounds.to)){const zero={unitCosts:{},details:{},lines:{},payroll:{},total:0,tons:0,fixed:0,variable:0,cuv:null,cut:null};zero.productionLimit=Number.isFinite(limitFor(m.productionCaps||[],month))?limitFor(m.productionCaps||[],month):null;zero.economics=calculateEconomics({works:b.works,quantities:{},cost:zero,catalog:b.economics,mineId:b.mineId});return zero;}if(b===base&&m===months&&costCache[month])return costCache[month];const c=new CostModel(model,b,month,m[month]||{},m.blastQuantities?.[month]||{}).results();c.productionLimit=Number.isFinite(limitFor(m.productionCaps||[],month))?limitFor(m.productionCaps||[],month):null;c.economics=calculateEconomics({works:b.works,quantities:m[month]||{},cost:c,catalog:b.economics,mineId:b.mineId,developmentFactor:Number(b.fixed.Aux?.M64??.6),mineralDensity:Number(b.fixed.Aux?.M24??2.7),wasteDensity:Number(b.fixed.Aux?.M25??2.5)});if(b===base&&m===months)costCache[month]=c;return c}
+function productionFor(month){
+ if(!productionCache.has(month))productionCache.set(month,mineMonth(base,months,month));
+ return productionCache.get(month);
+ }
 function selectedWorks(){const query=$('#search').value.toLocaleLowerCase('es'),type=$('#type').value;return base.works.filter(w=>(!type||w.type===type)&&(!query||[w.id,w.name,w.area].some(v=>String(v).toLocaleLowerCase('es').includes(query))))}
 function metricsHTML(items){return items.map(([label,value,note])=>`<div class="metric"><span class="label">${esc(label)}</span><strong>${value}</strong><small>${esc(note||'')}</small></div>`).join('')}
-function summary(s=result,m=months){const keys=monthKeys();let meters=0,tons=0,total=0,fixed=0;for(const key of keys){for(const w of base.works)if(w.unit==='m')meters+=m[key]?.[w.id]||0;const c=costs(key,base,m);tons+=c.tons;total+=c.total;fixed+=c.fixed}return {meters,tons,total,cuv:tons>0?(total-fixed)/tons:null,cut:tons>0?total/tons:null,end:endDate(s.end)}}
-function render(){try{clearError();$('#metrics').hidden=compareMode||tab!=='weeks';$('#monthNavigation').hidden=compareMode||tab!=='months';$('#content').classList.toggle('report-canvas',tab==='months');$('#content').classList.toggle('annual-canvas',tab==='annual');$('.hint').hidden=compareMode||tab!=='weeks';const sum=summary();$('#metrics').innerHTML=metricsHTML([['Metros desarrollados',fmt(sum.meters),'Desarrollo + Preparación'],['Toneladas a producir',fmt(sum.tons),'Tumbe + 60% mineral de Desarrollo'],['Costo del periodo',money(sum.total),'Incluye nómina fija y comunes'],['CUV / CUT',money(sum.cuv)+' / '+money(sum.cut),'MXN por tonelada a producir'],['Fin de todo el plan',sum.end,'Fuera del filtro de visualización']]);$('#dirty').textContent=dirty?'Cambios sin guardar':'';$('#planName').textContent=plan.name;$('#planComments').textContent=plan.comments||'';
+function render(){try{clearError();$('#metrics').hidden=compareMode||tab!=='weeks';$('#monthNavigation').hidden=compareMode||tab!=='months';$('#content').classList.toggle('report-canvas',tab==='months');$('#content').classList.toggle('annual-canvas',tab==='annual');$('.hint').hidden=compareMode||tab!=='weeks';if(!compareMode&&tab==='weeks'){
+ const sum=sumProduction(monthKeys().map(productionFor));
+ $('#metrics').innerHTML=metricsHTML([
+  ['Desarrollo + Preparación',fmt(sum.meters),'Metros lineales'],
+  ['Mineral a patio de mina',fmt(sum.tons),'Toneladas programadas'],
+  ['AgEq ponderado',fmt(sum.agEq),sum.gradeCoverage==null?'Sin tonelaje':fmt(sum.gradeCoverage*100,1)+'% del tonelaje con AgEq'],
+  ['Barrenación / avance',fmt(sum.drillPerMeter),'m barrenados por m de avance'],
+  ['Fin de todo el plan',endDate(result.end),'Fuera del filtro de visualización']
+ ]);
+ }
+ $('#dirty').textContent=dirty?'Cambios sin guardar':'';$('#planName').textContent=plan.name;$('#planComments').textContent=plan.comments||'';
  const warnings=[...(plan.projectUpdates||[]),...result.warnings];if(plan.productionCaps?.length&&!result.productionAdjustment)warnings.push('Límites mensuales configurados pero aún no aplicados: ejecuta Autoajustar en disparos.');if(!(plan.capacities||[]).length)warnings.push('Capacidad sin definir: no se ha verificado disponibilidad de recursos.');if(result.capacities.length)warnings.push(`${result.capacities.length} intervalos exceden la capacidad declarada. Usa «Proponer ajuste» para revisar una alternativa.`);if(plan.levelingSource&&!plan.leveledSegments)warnings.push('El ajuste guardado no tiene segmentos de ejecución.');$('#warnings').hidden=compareMode;$('#warnings').innerHTML=warnings.length?`<details><summary>${warnings.length} avisos del plan</summary><ul>${warnings.map(w=>'<li>'+esc(w)+'</li>').join('')}</ul></details>`:'';
  if(compareMode)renderComparison();else if(tab==='weeks')renderWeeks();else if(tab==='months')renderMonths();else renderAnnual();}catch(e){fail(e)}}
 function syncYears(){
@@ -51,7 +65,6 @@ function syncYears(){
  if(select.value!=='custom')setYear();
 }
 function setYear(){if($('#year').value==='custom')return;const p=yearPeriod($('#year').value);$('#from').value=p.from;$('#to').value=p.to}
-function valuedWorks(){return selectedWorks().map(w=>{const a=base.economics?.assignments?.find(a=>a.mineId===currentMine&&a.workId===w.id),z=base.economics?.zones?.find(z=>z.id===a?.zoneId&&z.mineId===currentMine);return {...w,economicZone:z?.name||'',veinWidth:a?.veinWidth,miningWidth:a?.miningWidth}})}
 function visibleWeeks(){
  const {from,to}=period();
  const firstTick=Math.floor(tick(from+'-01')/6)*6;
@@ -65,13 +78,29 @@ function visibleWeeks(){
 }
 function renderWeeks(){
  $('#content').innerHTML=projectExcelGrid({
-  works:valuedWorks(),plan,result,weeks:visibleWeeks(),
+  works:selectedWorks(),plan,result,weeks:visibleWeeks(),
   dependencies:base.dependencies,formatStart:dateAt,formatEnd:endDate
  });
 }
-function resourcesFor(month){return monthlyResources({month,works:base.works,quantities:months[month]||{},blastQuantities:months.blastQuantities?.[month],details:costs(month).details,availability:plan.fleetAvailability,crewInputs:plan.crewInputs,isRaise})}
-function renderMonths(){const keys=monthKeys();if(!keys.includes(reportMonth))reportMonth=keys[0];$('#monthSelect').innerHTML=keys.map(key=>`<option value="${key}">${esc(monthName(key))}</option>`).join('');$('#monthSelect').value=reportMonth;$('#previousMonth').disabled=keys.indexOf(reportMonth)===0;$('#nextMonth').disabled=keys.indexOf(reportMonth)===keys.length-1;$('#content').innerHTML=monthlyExcelReport({month:reportMonth,works:selectedWorks(),quantities:months[reportMonth]||{},cost:costs(reportMonth),grades:base.grades,resources:resourcesFor(reportMonth)})}
-function renderAnnual(){const records=monthKeys().map(month=>({...costs(month),resources:resourcesFor(month),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(months[month]?.[w.id]||0),0)}));$('#content').innerHTML=annualExcelReport(records);bindAnnualCostDetails($('#content'))}
+function resourcesFor(month){return monthlyResources({month,works:base.works,quantities:months[month]||{},blastQuantities:months.blastQuantities?.[month],details:productionFor(month).details,crewInputs:plan.crewInputs,isRaise})}
+function monthlyReport(month){
+ return monthlyExcelReport({
+  month,mine:$('#mineName').textContent,works:selectedWorks(),quantities:months[month]||{},
+  record:productionFor(month),resources:resourcesFor(month),grades:base.grades
+ });
+}
+function renderMonths(){
+ const keys=monthKeys();
+ if(!keys.includes(reportMonth))reportMonth=keys[0];
+ $('#monthSelect').innerHTML=keys.map(key=>`<option value="${key}">${esc(monthName(key))}</option>`).join('');
+ $('#monthSelect').value=reportMonth;
+ $('#previousMonth').disabled=keys[0]===reportMonth;
+ $('#nextMonth').disabled=keys.at(-1)===reportMonth;
+ $('#content').innerHTML=monthlyReport(reportMonth);
+}
+function renderAnnual(){
+ $('#content').innerHTML=annualExcelReport(monthKeys().map(month=>({...productionFor(month),resources:resourcesFor(month)})));
+}
 let compareSelected=new Set;
 function renderComparison(){
  $('#compareResults')._comparisonCleanup?.();
@@ -83,7 +112,7 @@ function renderComparison(){
  const keys=monthKeys();
  const scenarios=chosen.map(p=>{
   const computed=schedule(base,p),distribution=monthly(computed);
-  const records=keys.map(month=>({...costs(month,base,distribution),month,meters:base.works.filter(w=>w.unit==='m').reduce((sum,w)=>sum+(distribution[month]?.[w.id]||0),0)}));
+  const records=keys.map(month=>mineMonth(base,distribution,month));
   return {name:p.name,comments:p.comments,records};
  });
  $('#compareResults').innerHTML=annualComparisonReport(scenarios);bindComparisonScroll($('#compareResults'));
@@ -111,29 +140,22 @@ if($('#deleteplan'))$('#deleteplan').onclick=async()=>{
 };
 $('#saveas').onclick=()=>showEditor('Guardar como nuevo plan','ESCENARIOS',`<label>Nombre<input id="newName" value="${esc(plan.name+' · alternativa')}" required maxlength="160"></label><label>Comentarios<textarea id="newComments" rows="4">${esc(plan.comments)}</textarea></label>`,async()=>{plan=newPlan(plan,$('#newName').value,$('#newComments').value);dirty=true;await save(true)});
 $('#details').onclick=()=>showEditor('Nombre y comentarios','PLAN',`<label>Nombre<input id="newName" value="${esc(plan.name)}" required maxlength="160"></label><label>Comentarios<textarea id="newComments" rows="4">${esc(plan.comments)}</textarea></label>`,()=>{if(!$('#newName').value.trim())throw Error('Escribe un nombre');plan.name=$('#newName').value.trim();plan.comments=$('#newComments').value;changed()});
-if($('#economics'))$('#economics').onclick=()=>{try{
- if(!catalog.capabilities?.economics||!base.economics)throw Error('Actualiza Apps Script con la versión de valores y transporte.');
- openEconomicsEditor({catalog:base.economics,mineId:currentMine,works:base.works,showEditor,esc,save:async payload=>{
-  const button=$('#editForm button[type="submit"]');button.disabled=true;
-  try{const saved=await server('savePlanningEconomics',payload);catalog.economics=saved;base.economics=saved;costCache={};render();}finally{button.disabled=false;}
- }});
-}catch(e){fail(e)}};
-$('#capacity').onclick=()=>{try{if(!catalog.capabilities?.discreteBlasts)throw Error('Actualiza primero el servicio Apps Script con la versión de capacidad por disparos.');openCapacityEditor({plan,showEditor,onApply:changed,onAvailability:(availability,crewInputs)=>{plan={...plan,fleetAvailability:availability,crewInputs};dirty=true;localStorage.setItem(DRAFT,JSON.stringify({sourceSHA:base.sourceSHA256,plan}));render()},esc,monthlyEnabled:!!catalog.capabilities?.monthlyProduction})}catch(e){fail(e)}};
+$('#capacity').onclick=()=>{try{if(!catalog.capabilities?.discreteBlasts)throw Error('Actualiza primero el servicio Apps Script con la versión de capacidad por disparos.');openCapacityEditor({plan,showEditor,onApply:changed,onCrewSettings:crewInputs=>{plan={...plan,crewInputs};dirty=true;localStorage.setItem(DRAFT,JSON.stringify({sourceSHA:base.sourceSHA256,plan}));render()},esc,monthlyEnabled:!!catalog.capabilities?.monthlyProduction})}catch(e){fail(e)}};
 if($('#resources'))$('#resources').onclick=()=>{try{
  const keys=monthKeys();
- showEditor('Personal y equipos necesarios','CONSULTA MENSUAL','<label>Mes<select id="resourceMonth">'+keys.map(k=>'<option value="'+k+'">'+esc(monthName(k))+'</option>').join('')+'</select></label><div id="resourceBreakdown"></div>',()=>{});
+ showEditor('Insumos y cuadrillas','CONSULTA MENSUAL','<label>Mes<select id="resourceMonth">'+keys.map(k=>'<option value="'+k+'">'+esc(monthName(k))+'</option>').join('')+'</select></label><div id="resourceBreakdown"></div>',()=>{});
  $('#editForm button[type="submit"]').hidden=true;
  const select=$('#resourceMonth');if(keys.includes(reportMonth))select.value=reportMonth;
- const draw=()=>{try{$('#resourceBreakdown').innerHTML=resourcesDetailReport(resourcesFor(select.value))}catch(e){$('#resourceBreakdown').textContent=e.message}};
+ const draw=()=>{try{$('#resourceBreakdown').innerHTML=resourcesDetailReport(productionFor(select.value),resourcesFor(select.value))}catch(e){$('#resourceBreakdown').textContent=e.message}};
  select.onchange=draw;draw();
  }catch(e){fail(e)}};
 $('#level').onclick=()=>{try{if(!catalog.capabilities?.discreteBlasts)throw Error('Actualiza primero el servicio Apps Script para conservar comentarios y ajustes por disparos.');if(!plan.capacities?.length)throw Error('Define primero la capacidad disponible');if(plan.productionCaps?.length&&!catalog.capabilities?.monthlyProduction)throw Error('Actualiza Apps Script para validar los límites mensuales de producción.');proposal=levelCapacity(base,plan);const next=schedule(base,proposal);$('#proposalBody').innerHTML=`<p>Bloques de 1.5 m; tope por obra según la semana y máximo de 9 m por contrapozo. Avance real y consumo de capacidad se muestran separados.</p><details><summary>Capacidad y avance por semana</summary><table><thead><tr><th>Semana</th><th>Tope por obra (m)</th><th>Capacidad prorrateada</th><th>Consumida (equiv.m)</th><th>Avance real (m)</th><th>Sin usar (equiv.m)</th></tr></thead><tbody>${proposal.capacityAdjustment.weeks.map(w=>`<tr><td>${w.week}</td><td>${fmt(w.normalLimit)}</td><td>${fmt(w.available)}</td><td>${fmt(w.used)}</td><td>${fmt(w.actual)}</td><td>${fmt(w.unused)}</td></tr>`).join('')}</tbody></table></details>${proposal.productionAdjustment?'<details><summary>Producción mensual y límites</summary><table><thead><tr><th>Mes</th><th>Desarrollo al 60%</th><th>Tumbe</th><th>Total t</th><th>Máximo t</th></tr></thead><tbody>'+proposal.productionAdjustment.months.map(m=>'<tr><td>'+m.month+'</td><td>'+fmt(m.development)+'</td><td>'+fmt(m.tumbe)+'</td><td>'+fmt(m.total)+'</td><td>'+(m.limit===null?'Sin límite':fmt(m.limit))+'</td></tr>').join('')+'</tbody></table></details>':''}<p>Fin actual: <strong>${endDate(result.end)}</strong> → fin propuesto: <strong>${endDate(next.end)}</strong></p><p>Conflictos de capacidad: ${result.capacities.length} → ${next.capacities.length}</p><table><thead><tr><th>Obra</th><th>Fin actual</th><th>Fin propuesto</th></tr></thead><tbody>${base.works.map(w=>`<tr><td>${esc(w.name)}</td><td>${result.rows[w.id].end===null?'—':endDate(result.rows[w.id].end)}</td><td>${next.rows[w.id].end===null?'—':endDate(next.rows[w.id].end)}</td></tr>`).join('')}</tbody></table>`;$('#proposal').showModal()}catch(e){fail(e)}};$('#applyLevel').onclick=()=>{changed(proposal);$('#proposal').close()};
 $('#editForm').onsubmit=async e=>{e.preventDefault();try{await editHandler();$('#editor').close()}catch(err){fail(err)}};$$('[data-close]').forEach(b=>b.onclick=()=>b.closest('dialog').close());
-let clickTimer;$('#content').onclick=e=>{const costButton=e.target.closest('[data-cost-work]');if(costButton){const w=base.works.find(w=>w.id===costButton.dataset.costWork),month=costButton.dataset.month;showEditor(w.name,'CÁLCULO DE COSTOS',costDetailReport({work:w,month,quantity:months[month]?.[w.id]||0,cost:costs(month)}),()=>{});$('#editForm button[type="submit"]').hidden=true;return}const detail=e.target.closest('.work-detail');if(detail){editWork(detail.dataset.work);return}const cell=e.target.closest('button[data-week]');if(cell){clearTimeout(clickTimer);clickTimer=setTimeout(()=>editCell(cell.dataset.work,cell.dataset.week),230)}};$('#content').ondblclick=e=>{const c=e.target.closest('button[data-week]');if(c){clearTimeout(clickTimer);editCell(c.dataset.work,c.dataset.week)}};$('#content').oncontextmenu=e=>{const c=e.target.closest('button[data-week]');if(c){e.preventDefault();clearTimeout(clickTimer);editCell(c.dataset.work,c.dataset.week)}};
+let clickTimer;$('#content').onclick=e=>{const inputButton=e.target.closest('[data-input-work]');if(inputButton){const w=base.works.find(w=>w.id===inputButton.dataset.inputWork),month=inputButton.dataset.month;showEditor(w.name,'INSUMOS PROGRAMADOS',inputDetailReport(w,month,productionFor(month)),()=>{});$('#editForm button[type="submit"]').hidden=true;return}const detail=e.target.closest('.work-detail');if(detail){editWork(detail.dataset.work);return}const cell=e.target.closest('button[data-week]');if(cell){clearTimeout(clickTimer);clickTimer=setTimeout(()=>editCell(cell.dataset.work,cell.dataset.week),230)}};$('#content').ondblclick=e=>{const c=e.target.closest('button[data-week]');if(c){clearTimeout(clickTimer);editCell(c.dataset.work,c.dataset.week)}};$('#content').oncontextmenu=e=>{const c=e.target.closest('button[data-week]');if(c){e.preventDefault();clearTimeout(clickTimer);editCell(c.dataset.work,c.dataset.week)}};
 $('#editorBody').onclick=e=>{const r=e.target.closest('[data-remove-rate]'),p=e.target.closest('[data-remove-pause]'),c=e.target.closest('[data-remove-capacity]');if(r){const next=clone(plan);next.rates=next.rates.filter(x=>x.workId!==r.dataset.work||x.week!==r.dataset.removeRate);delete next.leveledSegments;delete next.levelingSource;changed(next);$('#editor').close()}if(p){const next=clone(plan);next.pauses=next.pauses.filter(x=>x.workId!==p.dataset.work||x.from!==p.dataset.removePause);delete next.leveledSegments;delete next.levelingSource;changed(next);$('#editor').close()}if(c){const next=clone(plan);next.capacities.splice(+c.dataset.removeCapacity,1);delete next.leveledSegments;delete next.levelingSource;changed(next);$('#editor').close()}};
 $('#monthSelect').onchange=()=>{reportMonth=$('#monthSelect').value;render()};$('#previousMonth').onclick=()=>{const keys=monthKeys(),i=keys.indexOf(reportMonth);if(i>0){reportMonth=keys[i-1];render()}};$('#nextMonth').onclick=()=>{const keys=monthKeys(),i=keys.indexOf(reportMonth);if(i<keys.length-1){reportMonth=keys[i+1];render()}};
 $('#year').onchange=()=>{setYear();render()};for(const id of ['from','to'])$('#'+id).onchange=()=>{$('#year').value='custom';render()};for(const id of ['type','search'])$('#'+id).oninput=render;$$('[data-tab]').forEach(b=>b.onclick=()=>{tab=b.dataset.tab;$$('[data-tab]').forEach(x=>x.classList.toggle('active',x===b));render()});$('#compareChoices').onchange=e=>{const id=e.target.dataset.compare;if(!id)return;if(e.target.checked)compareSelected.add(id);else compareSelected.delete(id);renderComparison()};
-$('#refresh').onclick=async()=>{if(dirty&&!confirm('La actualización puede cambiar los catálogos del borrador. ¿Continuar?'))return;try{busy(true);if(cloud){const fresh=fromCloud(await server('loadPlanningData'));base=fresh;ensureInitialPlan();fillMines();if(dirty)plan=reconcileProject(base,plan);else{const current=fresh.plans.find(p=>p.id===plan.id);plan=clone(current||fresh.plans[0])}fillPlans()}else{const fresh=await fetch('data.json',{cache:'no-store'}).then(r=>r.json());base.fixed=fresh.fixed;base.works=fresh.works;base.dependencies=fresh.dependencies;base.grades=fresh.grades}calculate();render()}catch(e){fail(e)}finally{busy(false)}};
+$('#refresh').onclick=async()=>{if(dirty&&!confirm('La actualización puede cambiar los catálogos del borrador. ¿Continuar?'))return;try{busy(true);if(cloud){const fresh=fromCloud(await server('loadPlanningData'));base=fresh;ensureInitialPlan();fillMines();if(dirty)plan=reconcileProject(base,plan);else{const current=fresh.plans.find(p=>p.id===plan.id);plan=clone(current||fresh.plans[0])}fillPlans()}else{const fresh=await fetch('data.json',{cache:'no-store'}).then(r=>r.json());base.fixed=fresh.fixed;base.works=fresh.works;base.dependencies=fresh.dependencies}calculate();render()}catch(e){fail(e)}finally{busy(false)}};
 window.addEventListener('beforeunload',e=>{if(dirty){e.preventDefault();e.returnValue=''}});window.addEventListener('storage',e=>{if(e.key===STORAGE)fail(Error('Los planes cambiaron en otra pestaña. Guarda una copia antes de volver a cargar.'))});
 $('#authorize').onclick=()=>{try{window.open(planningTransport.authorizationUrl(),'_blank','noopener,noreferrer')}catch(e){fail(e)}};
 $('#reconnect').onclick=async()=>{if(dirty&&!confirm('Hay cambios sin guardar. ¿Descartar el borrador abierto y recargar?'))return;planningTransport.dispose();planningTransport=new PlanningClient(planningConfig);dirty=false;plan=null;await init()};
@@ -145,12 +167,7 @@ init();
 
 function printCurrentPlan(includeMonths=false){
  const {from,to}=period();
- const monthlyDetails=includeMonths?monthKeys().map(month=>({
-  html:monthlyExcelReport({
-   month,works:selectedWorks(),quantities:months[month]||{},
-   cost:costs(month),grades:base.grades,resources:resourcesFor(month)
-  })
- })):[];
+ const monthlyDetails=includeMonths?monthKeys().map(month=>({html:monthlyReport(month)})):[];
  printActivePlan({
   name:plan.name,mine:$('#mineName').textContent,dirty,tab,
   period:tab==='months'?monthName(reportMonth):monthName(from)+' – '+monthName(to),
