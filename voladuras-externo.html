@@ -1,45 +1,22 @@
 <!doctype html>
 <html lang="es">
 <head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="theme-color" content="#102b48">
-<title>MineCAD | Panel externo</title>
-<style>
-:root{font-family:Inter,"Segoe UI",system-ui,sans-serif;color:#e6f0f8;background:#edf3f8;color-scheme:light}*{box-sizing:border-box}body{margin:0;height:100dvh;display:flex;flex-direction:column}.bar{flex:none;background:#102b48;display:flex;align-items:center;gap:16px;padding:10px 18px;border-bottom:1px solid #315476}.brand{display:flex;align-items:center;gap:10px;min-width:0}.mark{display:grid;place-items:center;width:36px;height:36px;border:1px solid #739aca;border-radius:9px;color:#fff;font-weight:800;font-size:14px}.brand strong{display:block;font-size:16px;letter-spacing:.06em}.brand small{color:#b6cde0;font-size:12px}.actions{margin-left:auto;display:flex;gap:7px;align-items:center;flex-wrap:wrap}a,button{font:inherit;font-size:13px;border:1px solid #6082a1;border-radius:7px;padding:7px 10px;text-decoration:none;color:#eff7ff;background:#174269;cursor:pointer}a:hover,button:hover{background:#245e92}:focus-visible{outline:3px solid #76c8ff;outline-offset:2px}#guide{color:#18334e;background:#fff;border-bottom:1px solid #d8e5ef;padding:12px 18px;max-height:45vh;overflow:auto;font-size:14px;line-height:1.5}#guide a{background:#edf5fc;color:#174e80;display:inline-block}#guide p{margin:5px 0 10px}#guide[hidden]{display:none}.frame-wrap{flex:1;min-height:0;position:relative}iframe{display:block;border:0;width:100%;height:100%;background:#102234}footer{flex:none;display:flex;gap:8px;flex-wrap:wrap;justify-content:space-between;padding:5px 12px;background:#f6f9fc;color:#62768a;font-size:11px;border-top:1px solid #d8e5ef}footer a{color:#174e80;background:none;border:0;padding:0;font-size:inherit}body.focus .bar,body.focus footer,body.focus #guide{display:none}#exit-focus{display:none;position:fixed;right:12px;top:10px;z-index:10;box-shadow:0 3px 12px #0005}body.focus #exit-focus{display:block}@media(max-width:650px){.bar{padding:8px 10px;gap:8px;flex-wrap:wrap}.actions{gap:5px}.brand small{display:none}.actions a,.actions button{padding:6px 8px;font-size:12px}footer{font-size:10px}}
-</style>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#112b42">
+  <meta http-equiv="refresh" content="0;url=https://minecad-apps.github.io/Voladuras/">
+  <link rel="canonical" href="https://minecad-apps.github.io/Voladuras/">
+  <title>MineCAD | Barrenación y voladuras</title>
+  <style>
+    body{margin:0;min-height:100vh;display:grid;place-items:center;background:#0c1a29;color:#dcebf5;font:14px/1.5 "Segoe UI",Arial,sans-serif}
+    main{max-width:440px;padding:28px}h1{font-size:22px}a{color:#94d9ff}p{color:#afc6d8}
+  </style>
 </head>
 <body>
-<header class="bar">
- <div class="brand"><span class="mark" aria-hidden="true">MC</span><div><strong>MINECAD</strong><small>Panel de diseño · herramienta externa</small></div></div>
- <nav class="actions" aria-label="Acciones del módulo">
-  <a href="index.html">Inicio</a>
-  <button id="theme-guide" aria-expanded="false" aria-controls="guide">Tema MineCAD</button>
-  <button id="focus">Ampliar</button>
-  <a href="https://extraordinary-jelly-d2ae56.netlify.app/" target="_blank" rel="noopener noreferrer">Abrir aparte</a>
- </nav>
-</header>
-<section id="guide" hidden aria-label="Instalar el tema local">
- <p><strong>Colores MineCAD en este navegador</strong></p>
- <p>El panel pertenece a otro dominio. Instala Tampermonkey desde su sitio oficial, crea un script y pega el contenido de <strong>minecad-tema.user.js</strong>. Guárdalo y recarga este módulo. El tema se ejecuta también dentro del marco.</p>
- <a href="https://www.tampermonkey.net/" target="_blank" rel="noopener noreferrer">Tampermonkey oficial</a>
- <a href="minecad-tema.user.js" download>Descargar tema</a>
- <p>Sin el script, la herramienta conserva su apariencia original. El tema cambia únicamente la interfaz y mantiene la atribución al autor.</p>
- <p>Si alguna exportación, guardado o impresión no funciona dentro del marco, usa «Abrir aparte». La biblioteca y los permisos dependen del navegador y de la página externa.</p>
-</section>
-<main class="frame-wrap">
- <iframe id="external-panel" title="Panel externo de JR Cognitive Projects" src="https://extraordinary-jelly-d2ae56.netlify.app/" allow="fullscreen" allowfullscreen></iframe>
-</main>
-<button id="exit-focus">Restaurar barra</button>
-<footer><span>Herramienta: <a href="https://extraordinary-jelly-d2ae56.netlify.app/" target="_blank" rel="noopener noreferrer">JR Cognitive Projects</a> · integración visual MineCAD</span><span id="frame-status" role="status">Cargando marco externo…</span></footer>
-<script>
-const guide=document.getElementById('guide'),help=document.getElementById('theme-guide');
-help.addEventListener('click',()=>{guide.hidden=!guide.hidden;help.setAttribute('aria-expanded',String(!guide.hidden));});
-function focusView(on){document.body.classList.toggle('focus',on);if(on){guide.hidden=true;help.setAttribute('aria-expanded','false');document.getElementById('exit-focus').focus();}else document.getElementById('focus').focus();}
-document.getElementById('focus').addEventListener('click',()=>focusView(true));
-document.getElementById('exit-focus').addEventListener('click',()=>focusView(false));
-document.addEventListener('keydown',e=>{if(e.key==='Escape'&&document.body.classList.contains('focus'))focusView(false);});
-document.getElementById('external-panel').addEventListener('load',()=>{document.getElementById('frame-status').textContent='Marco cargado · si no aparece el panel, usa «Abrir aparte»';});
-</script>
+  <main>
+    <h1>Barrenación y voladuras</h1>
+    <p>Abriendo el módulo de MineCAD…</p>
+    <a href="https://minecad-apps.github.io/Voladuras/">Abrir el módulo</a>
+  </main>
 </body>
 </html>
